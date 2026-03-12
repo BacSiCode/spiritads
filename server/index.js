@@ -13,8 +13,6 @@ const authRoutes = require('./routes/auth');
 const campaignRoutes = require('./routes/campaigns');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
-const notifRoutes = require('./routes/notifications');
-const blogRoutes = require('./routes/blog');
 
 connectDB();
 const app = express();
@@ -179,8 +177,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/notifications', notifRoutes);
-app.use('/api/blog', blogRoutes);
 app.use('/api', publicRoutes);
 
 app.get('/api/health', (req, res) => res.json({

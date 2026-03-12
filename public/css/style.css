@@ -288,16 +288,25 @@ section { padding: 100px 5%; }
 }
 
 .hero-stats {
-  display: flex; gap: 40px; margin-top: 56px;
+  display: flex;
+  gap: 40px;
+  margin-top: 56px;
 }
+
 .hero-stat-item { }
+
 .hero-stat-num {
   font-family: 'Playfair Display', serif;
-  font-size: 2.2rem; font-weight: 700;
+  font-size: 2.2rem;
+  font-weight: 700;
   color: var(--white);
   line-height: 1;
 }
-.hero-stat-num span { color: var(--sky-300); }
+
+.hero-stat-num span {
+  color: var(--sky-300);
+}
+
 .hero-stat-label {
   font-size: 0.82rem;
   color: rgba(255,255,255,0.55);
