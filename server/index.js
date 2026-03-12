@@ -64,6 +64,41 @@ app.use((req, res, next) => {
 
 // ─── Dashboard API ────────────────────────────────────────────
 app.get('/monitor', (req, res) => {
+   // ─── Bảo vệ bằng password ─────────────────────
+  const key = req.query.key;
+  if (key !== 'Phuc2026secret') {
+    return res.status(403).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { background:#0a1628; display:flex; align-items:center; 
+                 justify-content:center; height:100vh; margin:0; }
+          .box { background:#0f2044; border:1px solid #2563eb; 
+                 border-radius:16px; padding:40px; text-align:center; }
+          input { padding:12px 20px; border-radius:8px; border:1px solid #2563eb;
+                  background:#1e3a5f; color:white; font-size:1rem; 
+                  margin-bottom:12px; width:100%; }
+          button { background:linear-gradient(135deg,#2563eb,#38bdf8); 
+                   color:white; border:none; padding:12px 32px; 
+                   border-radius:8px; cursor:pointer; font-size:1rem; width:100%; }
+          h2 { color:#38bdf8; margin-bottom:20px; }
+          p { color:#f87171; margin-top:12px; font-size:0.85rem; }
+        </style>
+      </head>
+      <body>
+        <div class="box">
+          <h2>🔒 Monitor Dashboard</h2>
+          <form method="GET" action="/monitor">
+            <input type="password" name="key" placeholder="Nhập mật khẩu...">
+            <button type="submit">Đăng nhập</button>
+          </form>
+          ${req.query.key ? '<p>❌ Sai mật khẩu!</p>' : ''}
+        </div>
+      </body>
+      </html>
+    `);
+  }
   const ipList = Object.entries(trafficLog.ipTracker)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20)
