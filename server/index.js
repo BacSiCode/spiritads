@@ -16,6 +16,7 @@ const publicRoutes = require('./routes/public');
 
 connectDB();
 const app = express();
+app.set('trust proxy', true);
 
 // ─── Traffic Monitor ──────────────────────────────────────────
 const trafficLog = {
@@ -27,7 +28,10 @@ const trafficLog = {
 };
 
 app.use((req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
+  const ip =
+  req.headers['x-forwarded-for']?.split(',')[0] ||
+  req.socket.remoteAddress ||
+  req.ip;
   const now = new Date();
   const minute = now.toISOString().slice(0, 16);
   trafficLog.totalRequests++;
