@@ -3,881 +3,658 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SpiritAds – Rượu Phương Đông</title>
+<title>SpiritAds – Nền Tảng Quảng Cáo Rượu #1 Việt Nam</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/style.css">
+<style>
+/* ═══════════════ NEW v2.0 STYLES ═══════════════ */
+#readProgress{position:fixed;top:0;left:0;height:3px;z-index:10001;background:linear-gradient(90deg,#2563eb,#38bdf8);width:0%;transition:width .1s}
+
+/* Notification Bell */
+.notif-wrap{position:relative}
+.notif-btn{width:38px;height:38px;border-radius:10px;background:#eff6ff;border:1.5px solid #bfdbfe;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;position:relative;transition:.2s}
+.notif-btn:hover{background:#dbeafe}
+.notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:.65rem;font-weight:800;display:none;align-items:center;justify-content:center;border:2px solid #fff}
+.notif-badge.show{display:flex;animation:pop .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.notif-drop{display:none;position:absolute;top:calc(100% + 10px);right:0;background:#fff;border:1px solid #f1f5f9;border-radius:18px;width:340px;box-shadow:0 20px 60px rgba(10,22,40,.18);z-index:9999;overflow:hidden}
+.notif-drop.open{display:block;animation:dropIn .25s ease}
+@keyframes dropIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.notif-hdr{padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}
+.notif-hdr-title{font-weight:700;font-size:.88rem;color:#0f2044}
+.notif-read-all{font-size:.75rem;color:#2563eb;cursor:pointer;font-weight:600;background:none;border:none;font-family:inherit}
+.notif-list{max-height:300px;overflow-y:auto}
+.notif-item{padding:12px 18px;border-bottom:1px solid #f8fafc;cursor:pointer;display:flex;gap:10px;align-items:flex-start;transition:.15s}
+.notif-item:hover{background:#f0f7ff}
+.notif-item.unread{background:#f0f7ff}
+.n-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.n-icon.info{background:#dbeafe}.n-icon.success{background:#d1fae5}.n-icon.warning{background:#fef3c7}.n-icon.error{background:#fee2e2}.n-icon.system{background:#f1f5f9}
+.n-title{font-size:.8rem;font-weight:700;color:#1e293b;margin-bottom:2px}
+.n-msg{font-size:.76rem;color:#64748b;line-height:1.4}
+.n-time{font-size:.68rem;color:#94a3b8;margin-top:3px}
+.notif-empty{padding:36px 18px;text-align:center;color:#94a3b8;font-size:.83rem}
+.notif-foot{padding:11px 18px;text-align:center;border-top:1px solid #f1f5f9;font-size:.8rem;color:#2563eb;cursor:pointer;font-weight:600}
+
+/* Dark toggle */
+.dark-btn{width:38px;height:38px;border-radius:10px;background:#eff6ff;border:1.5px solid #bfdbfe;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:.2s}
+.dark-btn:hover{background:#dbeafe}
+
+/* Pricing */
+#pricing{padding:100px 5%;background:linear-gradient(180deg,#f8fafc 0%,#fff 100%)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:60px;max-width:1100px;margin-left:auto;margin-right:auto}
+.pr-card{background:#fff;border-radius:20px;padding:36px 30px;border:2px solid #e2e8f0;position:relative;transition:.3s}
+.pr-card:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(10,22,40,.12)}
+.pr-card.popular{border-color:#2563eb;box-shadow:0 0 0 4px rgba(37,99,235,.1)}
+.pr-pop-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1d4ed8,#38bdf8);color:#fff;font-size:.72rem;font-weight:800;padding:5px 18px;border-radius:99px;white-space:nowrap}
+.pr-name{font-size:.95rem;font-weight:700;color:#64748b;margin-bottom:8px}
+.pr-price{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;color:#0f2044;line-height:1;margin-bottom:4px}
+.pr-price span{font-size:1rem;font-weight:400;color:#94a3b8;font-family:'DM Sans',sans-serif}
+.pr-period{font-size:.8rem;color:#94a3b8;margin-bottom:28px}
+.pr-features{list-style:none;margin-bottom:28px;display:flex;flex-direction:column;gap:9px}
+.pr-features li{font-size:.84rem;color:#475569;display:flex;align-items:center;gap:8px}
+.pr-features li::before{content:'✓';color:#10b981;font-weight:800;flex-shrink:0}
+.pr-features li.no{color:#cbd5e1}.pr-features li.no::before{content:'✕';color:#cbd5e1}
+.pr-btn{width:100%;padding:13px;border-radius:12px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;border:2px solid transparent}
+.pr-btn.primary{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none}
+.pr-btn.outline{background:transparent;color:#2563eb;border-color:#bfdbfe}
+.pr-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(37,99,235,.25)}
+
+/* Blog */
+#blog{padding:100px 5%;background:#fff}
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:60px}
+.blog-card{border-radius:18px;overflow:hidden;border:1px solid #f1f5f9;transition:.3s;cursor:pointer}
+.blog-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(10,22,40,.1)}
+.blog-thumb{height:175px;display:flex;align-items:center;justify-content:center;font-size:3.8rem}
+.bt1{background:linear-gradient(135deg,#0f2044,#2563eb)}
+.bt2{background:linear-gradient(135deg,#064e3b,#10b981)}
+.bt3{background:linear-gradient(135deg,#4c1d95,#7c3aed)}
+.blog-body{padding:22px}
+.blog-cat{font-size:.7rem;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.blog-title{font-size:.97rem;font-weight:700;color:#1e293b;line-height:1.4;margin-bottom:9px}
+.blog-excerpt{font-size:.8rem;color:#64748b;line-height:1.6;margin-bottom:14px}
+.blog-meta{display:flex;justify-content:space-between;font-size:.73rem;color:#94a3b8}
+.blog-more{color:#2563eb;font-weight:600}
+
+/* Leadership / CEO */
+#leadership{padding:100px 5%;background:#0f2044;position:relative;overflow:hidden}
+#leadership::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 15% 50%,rgba(37,99,235,.35) 0%,transparent 55%),radial-gradient(ellipse at 85% 50%,rgba(56,189,248,.18) 0%,transparent 55%)}
+.lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;position:relative;z-index:1;max-width:1100px;margin:0 auto}
+.ceo-card{background:rgba(255,255,255,.06);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:48px 36px;text-align:center}
+.ceo-av{width:120px;height:120px;border-radius:50%;margin:0 auto 20px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(56,189,248,.3),0 20px 40px rgba(0,0,0,.3);position:relative}
+.ceo-av::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px dashed rgba(56,189,248,.4);animation:spin 20s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ceo-name{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:700;color:#fff;margin-bottom:6px}
+.ceo-role{font-size:.82rem;color:#38bdf8;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:18px}
+.ceo-divider{width:44px;height:3px;background:linear-gradient(90deg,#2563eb,#38bdf8);border-radius:99px;margin:0 auto 18px}
+.ceo-quote{font-size:.9rem;color:rgba(255,255,255,.7);line-height:1.8;font-style:italic;margin-bottom:26px}
+.ceo-socials{display:flex;justify-content:center;gap:10px}
+.ceo-soc{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:.2s}
+.ceo-soc:hover{background:rgba(255,255,255,.2);transform:translateY(-2px)}
+.lead-content .section-tag{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:#38bdf8}
+.lead-content .section-title{color:#fff}
+.lead-content .section-title span{color:#38bdf8}
+.lead-desc{color:rgba(255,255,255,.65);font-size:.93rem;line-height:1.8;margin-bottom:36px}
+.lead-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lead-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:18px}
+.lead-stat-n{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:#38bdf8}
+.lead-stat-l{font-size:.76rem;color:rgba(255,255,255,.5);margin-top:3px}
+
+/* FAQ */
+#faq{padding:100px 5%;background:#f8fafc}
+.faq-list{max-width:760px;margin:60px auto 0;display:flex;flex-direction:column;gap:10px}
+.faq-item{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden}
+.faq-q{padding:18px 22px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:600;font-size:.9rem;color:#0f2044;transition:.2s;gap:12px}
+.faq-q:hover{background:#eff6ff}
+.faq-arr{color:#2563eb;transition:.3s;flex-shrink:0;font-size:.8rem}
+.faq-item.open .faq-arr{transform:rotate(180deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease;font-size:.86rem;color:#475569;line-height:1.7}
+.faq-item.open .faq-a{max-height:200px}
+.faq-a-inner{padding:0 22px 18px}
+
+/* Cookie */
+#cookieBanner{position:fixed;bottom:20px;left:20px;right:20px;max-width:500px;background:#0f2044;color:#fff;border-radius:18px;padding:18px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3);z-index:9998;display:flex;gap:14px;align-items:flex-start;animation:slideUp .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes slideUp{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
+#cookieBanner.hidden{display:none}
+.ck-text{font-size:.8rem;color:rgba(255,255,255,.8);line-height:1.5;flex:1}
+.ck-btns{display:flex;gap:7px;flex-shrink:0;margin-top:2px}
+.ck-yes{background:#38bdf8;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit}
+.ck-no{background:transparent;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:7px 12px;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:inherit}
+
+/* Chat */
+#chatBtn{position:fixed;bottom:24px;right:24px;z-index:9997;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#2563eb);border:none;cursor:pointer;box-shadow:0 8px 24px rgba(37,99,235,.45);font-size:1.4rem;display:flex;align-items:center;justify-content:center;transition:.3s;animation:chatPulse 3s infinite}
+@keyframes chatPulse{0%,100%{box-shadow:0 8px 24px rgba(37,99,235,.45)}50%{box-shadow:0 8px 40px rgba(37,99,235,.7),0 0 0 8px rgba(37,99,235,.1)}}
+#chatBtn:hover{transform:scale(1.08)}
+#chatWin{position:fixed;bottom:90px;right:24px;z-index:9997;width:330px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(10,22,40,.2);overflow:hidden;display:none}
+#chatWin.open{display:block;animation:chatOpen .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes chatOpen{from{transform:scale(.85) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.chat-hdr{background:linear-gradient(135deg,#0f2044,#1d4ed8);padding:15px 18px;color:#fff}
+.chat-hdr-t{font-weight:700;font-size:.92rem}
+.chat-hdr-s{font-size:.72rem;opacity:.75;margin-top:2px}
+.chat-online{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;margin-right:4px}
+.chat-msgs{padding:14px;height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:82%;padding:9px 13px;border-radius:13px;font-size:.8rem;line-height:1.5}
+.chat-msg.bot{background:#eff6ff;color:#0f2044;align-self:flex-start;border-bottom-left-radius:3px}
+.chat-msg.user{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.chat-inp-wrap{padding:11px;border-top:1px solid #f1f5f9;display:flex;gap:7px}
+.chat-inp{flex:1;padding:9px 13px;border-radius:9px;border:1.5px solid #e2e8f0;font-size:.83rem;font-family:'DM Sans',sans-serif;outline:none}
+.chat-inp:focus{border-color:#2563eb}
+.chat-send{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:9px;padding:9px 13px;cursor:pointer;font-size:.88rem}
+
+/* Back to top */
+#btt{position:fixed;bottom:88px;right:24px;z-index:9996;width:38px;height:38px;border-radius:9px;background:#fff;border:1.5px solid #e2e8f0;cursor:pointer;font-size:.95rem;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.08);transition:.2s}
+#btt.show{display:flex}
+#btt:hover{background:#eff6ff;border-color:#93c5fd}
+
+@media(max-width:1000px){
+  .pricing-grid{grid-template-columns:1fr;max-width:400px;margin-left:auto;margin-right:auto}
+  .blog-grid{grid-template-columns:1fr}
+  .lead-grid{grid-template-columns:1fr;gap:40px}
+}
+</style>
 </head>
 <body>
 
+<div id="readProgress"></div>
+
+<!-- ══════════════ NAVBAR ══════════════ -->
 <nav id="mainNav">
   <a class="nav-logo" href="#home">
-    <div class="nav-logo-icon">🍶</div>
+    <!-- AI-Generated SVG Logo -->
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:10px;flex-shrink:0">
+      <defs>
+        <linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>
+        <linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity=".95"/><stop offset="100%" stop-color="#bfdbfe" stop-opacity=".7"/></linearGradient>
+      </defs>
+      <rect width="36" height="36" rx="10" fill="url(#lg1)"/>
+      <!-- Bottle body -->
+      <rect x="14" y="14" width="8" height="13" rx="3" fill="url(#lg2)"/>
+      <!-- Bottle neck -->
+      <rect x="16" y="9" width="4" height="6" rx="1.5" fill="url(#lg2)"/>
+      <!-- Bottle cap -->
+      <rect x="15.5" y="7" width="5" height="3" rx="1" fill="#38bdf8"/>
+      <!-- Wave highlight -->
+      <path d="M14 21 Q16 19.5 18 21 Q20 22.5 22 21" stroke="#2563eb" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".6"/>
+      <!-- Star sparkle top right -->
+      <circle cx="27" cy="8" r="1.2" fill="#38bdf8"/>
+      <path d="M27 5.5 L27.5 7.2 L29 7.2 L28 8.2 L28.4 10 L27 9 L25.6 10 L26 8.2 L25 7.2 L26.5 7.2Z" fill="#7dd3fc" opacity=".9" transform="scale(0.55) translate(22.5, 3)"/>
+    </svg>
     SpiritAds
   </a>
+
   <ul class="nav-links">
     <li><a href="#home" class="active">Trang chủ</a></li>
     <li><a href="#services">Dịch vụ</a></li>
     <li><a href="#products">Thương hiệu</a></li>
-    <li><a href="#dashboard">Dashboard</a></li>
-    <li><a href="#analytics">Phân tích</a></li>
-    <li><a href="#about">Về chúng tôi</a></li>
+    <li><a href="#pricing">Bảng giá</a></li>
+    <li><a href="#blog">Blog</a></li>
+    <li><a href="#leadership">Lãnh đạo</a></li>
     <li><a href="#contact">Liên hệ</a></li>
   </ul>
-  <div class="nav-cta">
-    <a href="#contact" class="btn-outline">Đăng nhập</a>
-    <a href="#contact" class="btn-primary">Đăng ký miễn phí</a>
+
+  <div class="nav-cta" style="display:flex;align-items:center;gap:9px">
+    <button class="dark-btn" onclick="toggleDark()" title="Chế độ tối" id="darkBtn">🌙</button>
+
+    <!-- Notification Bell (visible when logged in) -->
+    <div class="notif-wrap" id="notifWrap" style="display:none">
+      <button class="notif-btn" onclick="Notif.toggle()">🔔
+        <span class="notif-badge" id="notifBadge">0</span>
+      </button>
+      <div class="notif-drop" id="notifDrop">
+        <div class="notif-hdr">
+          <span class="notif-hdr-title">🔔 Thông báo</span>
+          <button class="notif-read-all" onclick="Notif.readAll()">Đánh dấu đã đọc</button>
+        </div>
+        <div class="notif-list" id="notifList"><div class="notif-empty">Không có thông báo mới</div></div>
+        <div class="notif-foot" onclick="Notif.toggle()">Xem tất cả thông báo →</div>
+      </div>
+    </div>
+
+    <a href="#" class="btn-outline" id="navLoginBtn" onclick="Modal.open('loginModal');return false">Đăng nhập</a>
+    <a href="#" class="btn-primary" id="navRegisterBtn" onclick="Modal.open('registerModal');return false">Đăng ký miễn phí</a>
   </div>
-  <div class="hamburger" onclick="toggleMenu()">
-    <span></span><span></span><span></span>
-  </div>
+
+  <div class="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></div>
 </nav>
 
 <div class="mobile-menu" id="mobileMenu">
   <a href="#home" onclick="toggleMenu()">Trang chủ</a>
   <a href="#services" onclick="toggleMenu()">Dịch vụ</a>
   <a href="#products" onclick="toggleMenu()">Thương hiệu</a>
-  <a href="#dashboard" onclick="toggleMenu()">Dashboard</a>
-  <a href="#analytics" onclick="toggleMenu()">Phân tích</a>
-  <a href="#about" onclick="toggleMenu()">Về chúng tôi</a>
+  <a href="#pricing" onclick="toggleMenu()">Bảng giá</a>
+  <a href="#blog" onclick="toggleMenu()">Blog</a>
+  <a href="#leadership" onclick="toggleMenu()">Lãnh đạo</a>
   <a href="#contact" onclick="toggleMenu()">Liên hệ</a>
 </div>
 
+<!-- ══════════════ HERO ══════════════ -->
 <section id="home">
   <div class="hero-bg-shapes">
     <div class="hero-orb hero-orb-1"></div>
     <div class="hero-orb hero-orb-2"></div>
     <div class="hero-orb hero-orb-3"></div>
   </div>
-
   <div class="hero-grid">
     <div class="hero-content">
-      <div class="hero-badge">
-        <span class="dot"></span>
-        Nền tảng #1 tại Việt Nam
-      </div>
-
-      <h1 class="hero-title">
-        Khuếch đại thương hiệu<br>
-        rượu của bạn với<br>
-        <span class="highlight">SpiritAds</span>
-      </h1>
-
-      <p class="hero-desc">
-        Nền tảng quảng cáo rượu hàng đầu Việt Nam – kết nối thương hiệu với hàng triệu người tiêu dùng tiềm năng thông qua các chiến dịch marketing thông minh và hiệu quả.
-      </p>
-
+      <div class="hero-badge"><span class="dot"></span>Nền tảng #1 tại Việt Nam</div>
+      <h1 class="hero-title">Khuếch đại thương hiệu<br>rượu của bạn với<br><span class="highlight">SpiritAds</span></h1>
+      <p class="hero-desc">Nền tảng quảng cáo rượu hàng đầu Việt Nam – kết nối thương hiệu với hàng triệu người tiêu dùng tiềm năng thông qua các chiến dịch marketing thông minh và hiệu quả.</p>
       <div class="hero-btns">
-        <a href="#products" class="btn-primary btn-large">✦ Khám phá ngay</a>
+        <a href="#pricing" class="btn-primary btn-large">✦ Xem bảng giá</a>
         <a href="#contact" class="btn-ghost btn-large">Đăng ký quảng cáo →</a>
       </div>
-
       <div class="hero-stats">
-        <div class="hero-stat-item">
-          <div class="hero-stat-num">500<span>+</span></div>
-          <div class="hero-stat-label">Thương hiệu đối tác</div>
-        </div>
-        <div class="hero-stat-item">
-          <div class="hero-stat-num">12<span>M</span></div>
-          <div class="hero-stat-label">Lượt hiển thị/tháng</div>
-        </div>
-        <div class="hero-stat-item">
-          <div class="hero-stat-num">98<span>%</span></div>
-          <div class="hero-stat-label">Khách hàng hài lòng</div>
-        </div>
+        <div class="hero-stat-item"><div class="hero-stat-num">500<span>+</span></div><div class="hero-stat-label">Thương hiệu đối tác</div></div>
+        <div class="hero-stat-item"><div class="hero-stat-num">12<span>M</span></div><div class="hero-stat-label">Lượt hiển thị/tháng</div></div>
+        <div class="hero-stat-item"><div class="hero-stat-num">98<span>%</span></div><div class="hero-stat-label">Khách hàng hài lòng</div></div>
       </div>
     </div>
-
     <div class="hero-visual">
       <div class="hero-card-main">
-        <div class="hero-card-header">
-          <span class="hero-card-title">📊 Hiệu suất chiến dịch</span>
-          <span class="hero-card-period">Tháng này</span>
-        </div>
-
+        <div class="hero-card-header"><span class="hero-card-title">📊 Hiệu suất chiến dịch</span><span class="hero-card-period">Tháng này</span></div>
         <div class="hero-chart-bars">
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:55%"></div>
-            <div class="bar bar-sky" style="height:40%"></div>
-          </div>
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:70%"></div>
-            <div class="bar bar-sky" style="height:55%"></div>
-          </div>
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:45%"></div>
-            <div class="bar bar-sky" style="height:30%"></div>
-          </div>
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:85%"></div>
-            <div class="bar bar-sky" style="height:65%"></div>
-          </div>
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:60%"></div>
-            <div class="bar bar-sky" style="height:48%"></div>
-          </div>
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:92%"></div>
-            <div class="bar bar-sky" style="height:72%"></div>
-          </div>
-          <div class="bar-group">
-            <div class="bar bar-blue" style="height:75%"></div>
-            <div class="bar bar-sky" style="height:58%"></div>
-          </div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:55%"></div><div class="bar bar-sky" style="height:40%"></div></div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:70%"></div><div class="bar bar-sky" style="height:55%"></div></div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:45%"></div><div class="bar bar-sky" style="height:30%"></div></div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:85%"></div><div class="bar bar-sky" style="height:65%"></div></div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:60%"></div><div class="bar bar-sky" style="height:48%"></div></div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:92%"></div><div class="bar bar-sky" style="height:72%"></div></div>
+          <div class="bar-group"><div class="bar bar-blue" style="height:75%"></div><div class="bar bar-sky" style="height:58%"></div></div>
         </div>
-
         <div class="hero-metrics">
-          <div class="metric-chip">
-            <div class="metric-label">Lượt nhấp chuột</div>
-            <div class="metric-value">248K</div>
-            <div class="metric-change">↑ 23% so với tháng trước</div>
-          </div>
-          <div class="metric-chip">
-            <div class="metric-label">Tỷ lệ chuyển đổi</div>
-            <div class="metric-value">4.7%</div>
-            <div class="metric-change">↑ 0.8% so với tháng trước</div>
-          </div>
-          <div class="metric-chip">
-            <div class="metric-label">Chi phí/click</div>
-            <div class="metric-value">1,200đ</div>
-            <div class="metric-change kpi-down">↓ 15% chi phí</div>
-          </div>
-          <div class="metric-chip">
-            <div class="metric-label">ROI chiến dịch</div>
-            <div class="metric-value">312%</div>
-            <div class="metric-change">↑ tăng trưởng mạnh</div>
-          </div>
+          <div class="metric-chip"><div class="metric-label">Lượt nhấp chuột</div><div class="metric-value">248K</div><div class="metric-change">↑ 23%</div></div>
+          <div class="metric-chip"><div class="metric-label">Tỷ lệ chuyển đổi</div><div class="metric-value">4.7%</div><div class="metric-change">↑ 0.8%</div></div>
+          <div class="metric-chip"><div class="metric-label">Chi phí/click</div><div class="metric-value">1,200đ</div><div class="metric-change kpi-down">↓ 15%</div></div>
+          <div class="metric-chip"><div class="metric-label">ROI chiến dịch</div><div class="metric-value">312%</div><div class="metric-change">↑ mạnh</div></div>
         </div>
       </div>
-
-      <div class="hero-float-badge hero-float-1">
-        <span class="float-icon">🏆</span>
-        <div>
-          <div class="float-text-main">Top thương hiệu</div>
-          <div class="float-text-sub">Hapro Brandy • Vang Đà Lạt</div>
-        </div>
-      </div>
-
-      <div class="hero-float-badge hero-float-2">
-        <span class="float-icon">🚀</span>
-        <div>
-          <div class="float-text-main">+47% hiệu suất</div>
-          <div class="float-text-sub">Chiến dịch tháng 3/2026</div>
-        </div>
-      </div>
+      <div class="hero-float-badge hero-float-1"><span class="float-icon">🏆</span><div><div class="float-text-main">Top thương hiệu</div><div class="float-text-sub">Hapro Brandy • Vang Đà Lạt</div></div></div>
+      <div class="hero-float-badge hero-float-2"><span class="float-icon">🚀</span><div><div class="float-text-main">+47% hiệu suất</div><div class="float-text-sub">Chiến dịch tháng 3/2026</div></div></div>
     </div>
   </div>
 </section>
 
-<div class="brands-ticker">
-  <div class="ticker-track">
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Vang Đà Lạt</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Hapro Brandy</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Rượu Mơ Hà Nội</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Tiger Beer</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Heineken</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Sài Gòn Beer</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Lúa Mới Vodka</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Johnnie Walker</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Chivas Regal</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Macallan</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Hennessy</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Ballantine's</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Vang Đà Lạt</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Hapro Brandy</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Rượu Mơ Hà Nội</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Tiger Beer</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Heineken</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Sài Gòn Beer</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Lúa Mới Vodka</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Johnnie Walker</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Chivas Regal</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Macallan</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Hennessy</div>
-    <div class="ticker-brand"><span class="ticker-brand-dot"></span> Ballantine's</div>
+<!-- Ticker -->
+<div class="brands-ticker"><div class="ticker-track">
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Vang Đà Lạt</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Hapro Brandy</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Rượu Mơ Hà Nội</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Tiger Beer</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Heineken</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Sài Gòn Beer</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Lúa Mới Vodka</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Johnnie Walker</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Chivas Regal</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Hennessy</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Macallan</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Ballantine's</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Vang Đà Lạt</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Hapro Brandy</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Rượu Mơ Hà Nội</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Tiger Beer</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Heineken</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Sài Gòn Beer</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Lúa Mới Vodka</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Johnnie Walker</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Chivas Regal</div>
+  <div class="ticker-brand"><span class="ticker-brand-dot"></span>Hennessy</div>
+</div></div>
+
+<!-- ══════════════ SERVICES ══════════════ -->
+<section id="services">
+  <div style="text-align:center">
+    <div class="section-tag">✦ Dịch vụ của chúng tôi</div>
+    <h2 class="section-title">Giải pháp quảng cáo<br><span>toàn diện cho ngành rượu</span></h2>
+    <p class="section-sub" style="margin:0 auto">Từ chiến dịch digital đến marketing truyền thống – chúng tôi có mọi giải pháp bạn cần.</p>
+  </div>
+  <div class="services-grid">
+    <div class="service-card fade-up stagger-1"><div class="service-icon">🍷</div><div class="service-name">Quảng cáo sản phẩm</div><div class="service-desc">Showcase sản phẩm rượu với visual ấn tượng, nhắm đúng đối tượng tiềm năng trên mọi nền tảng số.</div><div class="service-tag">Product Ads</div></div>
+    <div class="service-card fade-up stagger-2"><div class="service-icon">🏆</div><div class="service-name">Xây dựng thương hiệu</div><div class="service-desc">Chiến lược brand awareness dài hạn, xây dựng nhận diện thương hiệu mạnh mẽ và đáng tin cậy.</div><div class="service-tag">Brand Building</div></div>
+    <div class="service-card fade-up stagger-3"><div class="service-icon">📈</div><div class="service-name">Chiến dịch Marketing</div><div class="service-desc">Lên kế hoạch và triển khai chiến dịch 360° từ online đến offline với KPI rõ ràng, minh bạch.</div><div class="service-tag">Full Campaign</div></div>
+    <div class="service-card fade-up stagger-4"><div class="service-icon">💻</div><div class="service-name">Quảng cáo số</div><div class="service-desc">Tối ưu hiệu suất trên Facebook, Google, TikTok, YouTube với AI targeting thế hệ mới.</div><div class="service-tag">Digital Ads</div></div>
+  </div>
+</section>
+
+<!-- ══════════════ PRODUCTS ══════════════ -->
+<section id="products" style="background:#f8fafc">
+  <div style="text-align:center">
+    <div class="section-tag">✦ Thương hiệu nổi bật</div>
+    <h2 class="section-title">Các thương hiệu<br><span>đang quảng cáo cùng chúng tôi</span></h2>
+  </div>
+  <div class="products-filter" style="margin-top:40px">
+    <button class="filter-tab active">Tất cả</button>
+    <button class="filter-tab">Vang</button>
+    <button class="filter-tab">Whisky</button>
+    <button class="filter-tab">Bia</button>
+    <button class="filter-tab">Vodka</button>
+  </div>
+  <div class="products-grid" id="brandsGrid">
+    <div class="product-card fade-up stagger-1">
+      <div class="product-image" style="background:linear-gradient(135deg,#fce7f3,#fdf2f8)"><span class="product-badge">Nổi bật</span><span style="font-size:4rem">🍷</span></div>
+      <div class="product-info"><div class="product-brand">Vang Đỏ Đà Lạt Premium</div><div class="product-name">Vang • Đà Lạt, Lâm Đồng</div><div class="product-desc">Vang đỏ đặc biệt từ vùng cao nguyên Đà Lạt, hương thơm nồng nàn, vị chát nhẹ cân bằng.</div><div class="product-footer"><div class="product-rating"><span class="stars">★★★★★</span> (4.8)</div><button class="btn-detail">Xem chi tiết →</button></div></div>
+    </div>
+    <div class="product-card fade-up stagger-2">
+      <div class="product-image" style="background:linear-gradient(135deg,#fef3c7,#fffbeb)"><span class="product-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706)">Premium</span><span style="font-size:4rem">🥃</span></div>
+      <div class="product-info"><div class="product-brand">Hapro Brandy 12 Năm</div><div class="product-name">Brandy • Hà Nội</div><div class="product-desc">Brandy cao cấp ủ 12 năm trong thùng gỗ sồi Pháp, hương caramel và vanilla tinh tế.</div><div class="product-footer"><div class="product-rating"><span class="stars">★★★★★</span> (4.9)</div><button class="btn-detail">Xem chi tiết →</button></div></div>
+    </div>
+    <div class="product-card fade-up stagger-3">
+      <div class="product-image" style="background:linear-gradient(135deg,#d1fae5,#ecfdf5)"><span class="product-badge" style="background:linear-gradient(135deg,#10b981,#059669)">Bán chạy</span><span style="font-size:4rem">🍺</span></div>
+      <div class="product-info"><div class="product-brand">Sài Gòn Special Beer</div><div class="product-name">Bia • TP. Hồ Chí Minh</div><div class="product-desc">Bia vàng lager truyền thống, hương vị nhẹ nhàng sảng khoái, phù hợp mọi dịp.</div><div class="product-footer"><div class="product-rating"><span class="stars">★★★★☆</span> (4.5)</div><button class="btn-detail">Xem chi tiết →</button></div></div>
+    </div>
+    <div class="product-card fade-up stagger-4">
+      <div class="product-image" style="background:linear-gradient(135deg,#e0e7ff,#eef2ff)"><span class="product-badge" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">Mới</span><span style="font-size:4rem">🍸</span></div>
+      <div class="product-info"><div class="product-brand">Lúa Mới Premium Vodka</div><div class="product-name">Vodka • Hà Nội</div><div class="product-desc">Vodka cao cấp chưng cất từ gạo nếp thuần Việt, tinh khiết 5 lần, mềm mượt đặc trưng.</div><div class="product-footer"><div class="product-rating"><span class="stars">★★★★☆</span> (4.6)</div><button class="btn-detail">Xem chi tiết →</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats band -->
+<div class="stats-band" id="stats">
+  <div class="stats-band-grid">
+    <div class="stats-band-item"><div class="stats-band-num">500<span>+</span></div><div class="stats-band-label">Thương hiệu tin dùng</div></div>
+    <div class="stats-band-item"><div class="stats-band-num">2,400<span>+</span></div><div class="stats-band-label">Chiến dịch thành công</div></div>
+    <div class="stats-band-item"><div class="stats-band-num">12<span>M</span></div><div class="stats-band-label">Lượt hiển thị/tháng</div></div>
+    <div class="stats-band-item"><div class="stats-band-num">98<span>%</span></div><div class="stats-band-label">Khách hàng hài lòng</div></div>
   </div>
 </div>
 
-<section id="services">
-  <div style="text-align:center; margin-bottom: 0;">
-    <div class="section-tag">✦ Dịch vụ của chúng tôi</div>
-    <h2 class="section-title">Giải pháp quảng cáo<br><span>toàn diện cho rượu</span></h2>
-    <p class="section-sub" style="margin: 0 auto 0;">
-      Từ quảng cáo sản phẩm đến xây dựng thương hiệu – chúng tôi cung cấp đầy đủ dịch vụ marketing cho ngành đồ uống có cồn.
-    </p>
+<!-- ══════════════ PRICING ══════════════ -->
+<section id="pricing">
+  <div style="text-align:center">
+    <div class="section-tag">✦ Bảng giá</div>
+    <h2 class="section-title">Gói dịch vụ<br><span>phù hợp mọi ngân sách</span></h2>
+    <p class="section-sub" style="margin:0 auto">Bắt đầu miễn phí, nâng cấp khi cần. Không có phí ẩn.</p>
   </div>
-
-  <div class="services-grid">
-    <div class="service-card fade-up stagger-1">
-      <div class="service-icon">🍾</div>
-      <div class="service-name">Quảng cáo sản phẩm rượu</div>
-      <div class="service-desc">Đưa sản phẩm rượu của bạn đến đúng đối tượng khách hàng với các chiến dịch quảng cáo được cá nhân hóa và tối ưu hóa chuyển đổi.</div>
+  <div class="pricing-grid">
+    <div class="pr-card fade-up stagger-1">
+      <div class="pr-name">Cơ bản</div>
+      <div class="pr-price">2,990,000<span>đ</span></div>
+      <div class="pr-period">/ tháng</div>
+      <ul class="pr-features">
+        <li>1 chiến dịch active</li>
+        <li>500K lượt hiển thị/tháng</li>
+        <li>2 kênh quảng cáo</li>
+        <li>Báo cáo cơ bản</li>
+        <li>Hỗ trợ email</li>
+        <li class="no">AI targeting</li>
+        <li class="no">Hỗ trợ 24/7</li>
+      </ul>
+      <button class="pr-btn outline" onclick="Modal.open('registerModal')">Bắt đầu dùng thử</button>
     </div>
-    <div class="service-card fade-up stagger-2">
-      <div class="service-icon">🏷️</div>
-      <div class="service-name">Quảng cáo thương hiệu</div>
-      <div class="service-desc">Xây dựng nhận diện thương hiệu mạnh mẽ và tạo ấn tượng sâu sắc trong tâm trí người tiêu dùng thông qua storytelling và visual identity.</div>
+    <div class="pr-card popular fade-up stagger-2">
+      <div class="pr-pop-badge">⭐ PHỔ BIẾN NHẤT</div>
+      <div class="pr-name">Chuyên nghiệp</div>
+      <div class="pr-price">7,990,000<span>đ</span></div>
+      <div class="pr-period">/ tháng</div>
+      <ul class="pr-features">
+        <li>5 chiến dịch active</li>
+        <li>3M lượt hiển thị/tháng</li>
+        <li>Tất cả kênh quảng cáo</li>
+        <li>AI targeting thông minh</li>
+        <li>Báo cáo nâng cao</li>
+        <li>Hỗ trợ 24/7</li>
+        <li>Quản lý thương hiệu</li>
+        <li class="no">Dedicated manager</li>
+      </ul>
+      <button class="pr-btn primary" onclick="Modal.open('registerModal')">🚀 Đăng ký ngay</button>
     </div>
-    <div class="service-card fade-up stagger-3">
-      <div class="service-icon">📣</div>
-      <div class="service-name">Chiến dịch marketing</div>
-      <div class="service-desc">Lên kế hoạch và triển khai các chiến dịch marketing đa kênh – từ digital đến truyền thống – với chiến lược 360° phù hợp từng mùa vụ.</div>
-    </div>
-    <div class="service-card fade-up stagger-4">
-      <div class="service-icon">📱</div>
-      <div class="service-name">Quảng cáo nền tảng số</div>
-      <div class="service-desc">Tối ưu hiệu suất quảng cáo trên Facebook, Instagram, TikTok, Google và các nền tảng kỹ thuật số lớn với công nghệ AI targeting tiên tiến.</div>
-    </div>
-  </div>
-</section>
-
-<section id="stats">
-  <div class="stats-inner">
-    <div class="stat-item fade-up stagger-1">
-      <div class="stat-num">500<span>+</span></div>
-      <div class="stat-label">Thương hiệu đối tác</div>
-    </div>
-    <div class="stat-item fade-up stagger-2">
-      <div class="stat-num">2,400<span>+</span></div>
-      <div class="stat-label">Chiến dịch thành công</div>
-    </div>
-    <div class="stat-item fade-up stagger-3">
-      <div class="stat-num">12<span>M</span></div>
-      <div class="stat-label">Lượt hiển thị mỗi tháng</div>
-    </div>
-    <div class="stat-item fade-up stagger-4">
-      <div class="stat-num">98<span>%</span></div>
-      <div class="stat-label">Tỷ lệ hài lòng</div>
-    </div>
-  </div>
-</section>
-
-<section id="products">
-  <div class="products-header">
-    <div>
-      <div class="section-tag">✦ Thương hiệu nổi bật</div>
-      <h2 class="section-title">Các sản phẩm<br><span>đang quảng cáo</span></h2>
-    </div>
-    <div class="filter-tabs">
-      <button class="filter-tab active">Tất cả</button>
-      <button class="filter-tab">Vang</button>
-      <button class="filter-tab">Whisky</button>
-      <button class="filter-tab">Bia</button>
-      <button class="filter-tab">Vodka</button>
-    </div>
-  </div>
-
-  <div class="products-grid">
-    <div class="product-card fade-up stagger-1">
-      <div class="product-image">
-        <span class="product-badge">Nổi bật</span>
-        🍷
-      </div>
-      <div class="product-info">
-        <div class="product-brand">Dalat Winery</div>
-        <div class="product-name">Vang Đỏ Đà Lạt Premium</div>
-        <div class="product-desc">Vang đỏ đặc biệt từ vùng cao nguyên Đà Lạt, hương thơm nồng nàn, vị chát nhẹ cân bằng.</div>
-        <div class="product-footer">
-          <div class="product-rating">
-            <span class="stars">★★★★★</span>
-            (4.8)
-          </div>
-          <button class="btn-detail">Xem chi tiết →</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="product-card fade-up stagger-2">
-      <div class="product-image" style="background: linear-gradient(135deg, #fef3c7, #fffbeb);">
-        <span class="product-badge">Mới</span>
-        🥃
-      </div>
-      <div class="product-info">
-        <div class="product-brand">Hapro</div>
-        <div class="product-name">Hapro Brandy 12 Năm</div>
-        <div class="product-desc">Brandy cao cấp ủ 12 năm trong thùng gỗ sồi Pháp, hương caramel và vanilla tinh tế.</div>
-        <div class="product-footer">
-          <div class="product-rating">
-            <span class="stars">★★★★★</span>
-            (4.9)
-          </div>
-          <button class="btn-detail">Xem chi tiết →</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="product-card fade-up stagger-3">
-      <div class="product-image" style="background: linear-gradient(135deg, #d1fae5, #ecfdf5);">
-        <span class="product-badge">Bán chạy</span>
-        🍺
-      </div>
-      <div class="product-info">
-        <div class="product-brand">Sài Gòn Beer</div>
-        <div class="product-name">Bia Sài Gòn Đỏ Special</div>
-        <div class="product-desc">Bia lager đặc biệt với công thức bí truyền, vị ngọt nhẹ và bọt kem mịn hoàn hảo.</div>
-        <div class="product-footer">
-          <div class="product-rating">
-            <span class="stars">★★★★☆</span>
-            (4.5)
-          </div>
-          <button class="btn-detail">Xem chi tiết →</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="product-card fade-up stagger-4">
-      <div class="product-image" style="background: linear-gradient(135deg, #e0e7ff, #eef2ff);">
-        <span class="product-badge">Premium</span>
-        🍸
-      </div>
-      <div class="product-info">
-        <div class="product-brand">Lúa Mới</div>
-        <div class="product-name">Lúa Mới Vodka Crystal</div>
-        <div class="product-desc">Vodka cao cấp chắt lọc 5 lần từ lúa mạch Việt Nam, tinh khiết và mượt mà tuyệt vời.</div>
-        <div class="product-footer">
-          <div class="product-rating">
-            <span class="stars">★★★★★</span>
-            (4.7)
-          </div>
-          <button class="btn-detail">Xem chi tiết →</button>
-        </div>
-      </div>
+    <div class="pr-card fade-up stagger-3">
+      <div class="pr-name">Doanh nghiệp</div>
+      <div class="pr-price" style="font-size:1.8rem">Liên hệ</div>
+      <div class="pr-period">Tư vấn trực tiếp</div>
+      <ul class="pr-features">
+        <li>Không giới hạn chiến dịch</li>
+        <li>Không giới hạn hiển thị</li>
+        <li>Tất cả tính năng Pro</li>
+        <li>Dedicated account manager</li>
+        <li>SLA 99.9% uptime</li>
+        <li>Tích hợp API</li>
+        <li>Đào tạo đội ngũ</li>
+        <li>Hợp đồng tùy chỉnh</li>
+      </ul>
+      <button class="pr-btn outline" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">📞 Liên hệ tư vấn</button>
     </div>
   </div>
 </section>
 
-<section id="advantages">
-  <div class="advantages-grid">
-    <div class="advantages-list">
-      <div class="section-tag">✦ Lợi thế của chúng tôi</div>
-      <h2 class="section-title">Tại sao chọn<br><span>SpiritAds?</span></h2>
-
-      <div class="advantage-item">
-        <div class="advantage-num">01</div>
-        <div class="advantage-content">
-          <div class="advantage-title">Nhắm mục tiêu chính xác theo AI</div>
-          <div class="advantage-desc">Công nghệ AI tiên tiến phân tích hành vi người dùng, nhắm đúng đối tượng yêu thích rượu với độ chính xác 94%.</div>
-        </div>
-      </div>
-      <div class="advantage-item">
-        <div class="advantage-num">02</div>
-        <div class="advantage-content">
-          <div class="advantage-title">Đa kênh và đa nền tảng</div>
-          <div class="advantage-desc">Tiếp cận khách hàng trên 20+ kênh digital – từ mạng xã hội, website tin tức đến ứng dụng di động phổ biến nhất.</div>
-        </div>
-      </div>
-      <div class="advantage-item">
-        <div class="advantage-num">03</div>
-        <div class="advantage-content">
-          <div class="advantage-title">Báo cáo thời gian thực</div>
-          <div class="advantage-desc">Dashboard trực quan cập nhật dữ liệu theo giây, giúp bạn theo dõi và tối ưu chiến dịch ngay lập tức.</div>
-        </div>
-      </div>
-      <div class="advantage-item">
-        <div class="advantage-num">04</div>
-        <div class="advantage-content">
-          <div class="advantage-title">ROI tăng trưởng vượt trội</div>
-          <div class="advantage-desc">Trung bình khách hàng của chúng tôi đạt ROI 300%+ chỉ trong 90 ngày đầu tiên triển khai chiến dịch.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="advantages-visual fade-up">
-      <div class="adv-chart-title">Hiệu suất quảng cáo so sánh</div>
-      <div class="adv-chart-sub">ROI trung bình theo quý (tỷ đồng)</div>
-
-      <div class="adv-chart-bars">
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-1" style="height:60%"></div>
-          <div class="adv-bar-label">Q1</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-2" style="height:45%"></div>
-          <div class="adv-bar-label">Q1</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-1" style="height:78%"></div>
-          <div class="adv-bar-label">Q2</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-2" style="height:52%"></div>
-          <div class="adv-bar-label">Q2</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-1" style="height:90%"></div>
-          <div class="adv-bar-label">Q3</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-2" style="height:60%"></div>
-          <div class="adv-bar-label">Q3</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-1" style="height:100%"></div>
-          <div class="adv-bar-label">Q4</div>
-        </div>
-        <div class="adv-bar-wrap">
-          <div class="adv-bar adv-bar-2" style="height:68%"></div>
-          <div class="adv-bar-label">Q4</div>
-        </div>
-      </div>
-
-      <div class="adv-legend">
-        <div class="adv-legend-item">
-          <div class="adv-legend-dot" style="background: var(--blue-500);"></div>
-          SpiritAds
-        </div>
-        <div class="adv-legend-item">
-          <div class="adv-legend-dot" style="background: var(--sky-300);"></div>
-          Trung bình ngành
-        </div>
-      </div>
-
-      <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--blue-100);">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-          <div style="text-align:center; padding: 16px; background: var(--blue-50); border-radius: var(--radius-md);">
-            <div style="font-size: 1.8rem; font-weight: 800; color: var(--blue-600);">312%</div>
-            <div style="font-size: 0.78rem; color: var(--gray-500); margin-top: 4px;">ROI trung bình</div>
-          </div>
-          <div style="text-align:center; padding: 16px; background: var(--blue-50); border-radius: var(--radius-md);">
-            <div style="font-size: 1.8rem; font-weight: 800; color: var(--blue-600);">4.7%</div>
-            <div style="font-size: 0.78rem; color: var(--gray-500); margin-top: 4px;">Tỷ lệ chuyển đổi</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="dashboard" style="background: var(--blue-900); padding: 100px 5%;">
-  <div style="text-align:center; margin-bottom: 0;">
-    <div class="section-tag" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); color: var(--sky-300);">✦ Bảng điều khiển</div>
-    <h2 class="section-title" style="color: var(--white);">Quản lý chiến dịch<br><span style="color: var(--sky-300);">thông minh & trực quan</span></h2>
-    <p class="section-sub" style="color: rgba(255,255,255,0.5); margin: 0 auto;">
-      Dashboard thời gian thực giúp bạn theo dõi và tối ưu hiệu suất mọi lúc mọi nơi.
-    </p>
-  </div>
-
-  <div class="dashboard-wrapper">
-    <div class="dash-sidebar">
-      <div class="dash-logo">
-        <div class="dash-logo-mark">🍶</div>
-        SpiritAds
-      </div>
-
-      <div class="dash-nav-group">
-        <div class="dash-nav-label">Tổng quan</div>
-        <div class="dash-nav-item active">
-          <span class="dash-nav-icon">📊</span>
-          Trang tổng quan
-        </div>
-        <div class="dash-nav-item">
-          <span class="dash-nav-icon">📣</span>
-          Chiến dịch quảng cáo
-          <span class="dash-nav-badge">12</span>
-        </div>
-      </div>
-
-      <div class="dash-nav-group">
-        <div class="dash-nav-label">Phân tích</div>
-        <div class="dash-nav-item">
-          <span class="dash-nav-icon">📈</span>
-          Thống kê
-        </div>
-        <div class="dash-nav-item">
-          <span class="dash-nav-icon">👥</span>
-          Đối tượng
-        </div>
-      </div>
-
-      <div class="dash-nav-group">
-        <div class="dash-nav-label">Quản lý</div>
-        <div class="dash-nav-item">
-          <span class="dash-nav-icon">💰</span>
-          Quản lý ngân sách
-        </div>
-        <div class="dash-nav-item">
-          <span class="dash-nav-icon">🏢</span>
-          Hồ sơ doanh nghiệp
-        </div>
-        <div class="dash-nav-item">
-          <span class="dash-nav-icon">⚙️</span>
-          Cài đặt
-        </div>
-      </div>
-    </div>
-
-    <div class="dash-main">
-      <div class="dash-topbar">
-        <div class="dash-greeting">
-          <div class="dash-greeting-sub">Chào buổi sáng, 12/03/2026</div>
-          <div class="dash-greeting-main">Xin chào, Công ty ABC 👋</div>
-        </div>
-        <div class="dash-actions">
-          <button class="dash-btn dash-btn-ghost">📥 Xuất báo cáo</button>
-          <button class="dash-btn dash-btn-primary">+ Tạo chiến dịch</button>
-        </div>
-      </div>
-
-      <div class="kpi-row">
-        <div class="kpi-card">
-          <div class="kpi-header">
-            <span class="kpi-label">Lượt hiển thị</span>
-            <div class="kpi-icon">👁️</div>
-          </div>
-          <div class="kpi-value">2.4M</div>
-          <div class="kpi-change kpi-up">↑ +18.3% so với tháng trước</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-header">
-            <span class="kpi-label">Lượt nhấp</span>
-            <div class="kpi-icon">👆</div>
-          </div>
-          <div class="kpi-value">248K</div>
-          <div class="kpi-change kpi-up">↑ +23.1% so với tháng trước</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-header">
-            <span class="kpi-label">Ngân sách đã dùng</span>
-            <div class="kpi-icon">💸</div>
-          </div>
-          <div class="kpi-value">68%</div>
-          <div class="kpi-change" style="color: rgba(255,255,255,0.4);">68M / 100M đồng</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-header">
-            <span class="kpi-label">ROI chiến dịch</span>
-            <div class="kpi-icon">📈</div>
-          </div>
-          <div class="kpi-value">312%</div>
-          <div class="kpi-change kpi-up">↑ +45% so với tháng trước</div>
-        </div>
-      </div>
-
-      <div class="dash-charts">
-        <div class="chart-card">
-          <div class="chart-title">Lượt hiển thị & Nhấp chuột theo thời gian</div>
-          <div class="chart-sub">7 ngày gần nhất</div>
-          <div style="position:relative; height: 130px; overflow: hidden; border-radius: 8px;">
-            <div style="position:absolute; inset: 0; background: rgba(37,99,235,0.08); border-radius: 8px;"></div>
-            <div style="
-              position: absolute; bottom: 0; left: 0; right: 0; height: 100%;
-              background: linear-gradient(to bottom, rgba(37,99,235,0.3) 0%, transparent 100%);
-              clip-path: polygon(0% 100%, 0% 70%, 14% 55%, 28% 65%, 42% 35%, 57% 50%, 71% 22%, 85% 38%, 100% 15%, 100% 100%);
-            "></div>
-            <div style="
-              position: absolute; bottom: 0; left: 0; right: 0; height: 100%;
-              background: linear-gradient(to bottom, rgba(56,189,248,0.2) 0%, transparent 100%);
-              clip-path: polygon(0% 100%, 0% 85%, 14% 75%, 28% 80%, 42% 60%, 57% 68%, 71% 48%, 85% 58%, 100% 40%, 100% 100%);
-            "></div>
-            <div style="position:absolute; top: 10px; right: 12px; display:flex; gap: 16px;">
-              <span style="font-size:0.7rem; color: var(--blue-300); display:flex; align-items:center; gap:4px;">
-                <span style="width:10px; height:3px; background: var(--blue-400); display:inline-block; border-radius:2px;"></span>
-                Hiển thị
-              </span>
-              <span style="font-size:0.7rem; color: var(--sky-300); display:flex; align-items:center; gap:4px;">
-                <span style="width:10px; height:3px; background: var(--sky-300); display:inline-block; border-radius:2px;"></span>
-                Nhấp chuột
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <div class="chart-title">Phân bổ ngân sách</div>
-          <div class="chart-sub">Theo kênh quảng cáo</div>
-          <div class="donut-wrap">
-            <div class="donut">
-              <div class="donut-center">
-                <div class="donut-val">68M</div>
-                <div class="donut-lbl">đã dùng</div>
-              </div>
-            </div>
-          </div>
-          <div class="donut-legend">
-            <div class="legend-item"><div class="legend-dot" style="background: var(--blue-400);"></div>Facebook / IG — 50%</div>
-            <div class="legend-item"><div class="legend-dot" style="background: var(--sky-300);"></div>Google Ads — 25%</div>
-            <div class="legend-item"><div class="legend-dot" style="background: rgba(255,255,255,0.15);"></div>TikTok & khác — 25%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
+<!-- ══════════════ ANALYTICS ══════════════ -->
 <section id="analytics">
-  <div style="text-align:center; margin-bottom: 0;">
+  <div style="text-align:center;margin-bottom:0">
     <div class="section-tag">✦ Phân tích dữ liệu</div>
     <h2 class="section-title">Báo cáo chi tiết &<br><span>thống kê thời gian thực</span></h2>
-    <p class="section-sub" style="margin: 0 auto;">
-      Công cụ phân tích mạnh mẽ giúp bạn hiểu sâu về hiệu suất chiến dịch và hành vi khách hàng.
-    </p>
+    <p class="section-sub" style="margin:0 auto">Công cụ phân tích mạnh mẽ giúp bạn hiểu sâu về hiệu suất chiến dịch và hành vi khách hàng.</p>
   </div>
-
   <div class="analytics-grid">
     <div class="analytics-card fade-up">
       <div class="analytics-card-title">Hiệu suất theo kênh quảng cáo</div>
       <div class="analytics-card-sub">Tỷ lệ chuyển đổi (%) theo từng nền tảng</div>
-
       <div class="metric-bars">
-        <div class="metric-bar-item">
-          <div class="metric-bar-header">
-            <span class="metric-bar-name">📘 Facebook & Instagram</span>
-            <span class="metric-bar-val">5.8%</span>
-          </div>
-          <div class="metric-bar-track">
-            <div class="metric-bar-fill" style="width: 82%;"></div>
-          </div>
-        </div>
-        <div class="metric-bar-item">
-          <div class="metric-bar-header">
-            <span class="metric-bar-name">🔍 Google Ads</span>
-            <span class="metric-bar-val">4.9%</span>
-          </div>
-          <div class="metric-bar-track">
-            <div class="metric-bar-fill" style="width: 69%;"></div>
-          </div>
-        </div>
-        <div class="metric-bar-item">
-          <div class="metric-bar-header">
-            <span class="metric-bar-name">🎵 TikTok Ads</span>
-            <span class="metric-bar-val">6.2%</span>
-          </div>
-          <div class="metric-bar-track">
-            <div class="metric-bar-fill" style="width: 87%;"></div>
-          </div>
-        </div>
-        <div class="metric-bar-item">
-          <div class="metric-bar-header">
-            <span class="metric-bar-name">📧 Email Marketing</span>
-            <span class="metric-bar-val">3.1%</span>
-          </div>
-          <div class="metric-bar-track">
-            <div class="metric-bar-fill" style="width: 44%;"></div>
-          </div>
-        </div>
-        <div class="metric-bar-item">
-          <div class="metric-bar-header">
-            <span class="metric-bar-name">📰 Display Ads</span>
-            <span class="metric-bar-val">2.4%</span>
-          </div>
-          <div class="metric-bar-track">
-            <div class="metric-bar-fill" style="width: 34%;"></div>
-          </div>
-        </div>
+        <div class="metric-bar-item"><div class="metric-bar-header"><span class="metric-bar-name">📘 Facebook & Instagram</span><span class="metric-bar-val">5.8%</span></div><div class="metric-bar-track"><div class="metric-bar-fill" style="width:82%"></div></div></div>
+        <div class="metric-bar-item"><div class="metric-bar-header"><span class="metric-bar-name">🔍 Google Ads</span><span class="metric-bar-val">4.9%</span></div><div class="metric-bar-track"><div class="metric-bar-fill" style="width:69%"></div></div></div>
+        <div class="metric-bar-item"><div class="metric-bar-header"><span class="metric-bar-name">🎵 TikTok Ads</span><span class="metric-bar-val">6.2%</span></div><div class="metric-bar-track"><div class="metric-bar-fill" style="width:87%"></div></div></div>
+        <div class="metric-bar-item"><div class="metric-bar-header"><span class="metric-bar-name">📧 Email Marketing</span><span class="metric-bar-val">3.1%</span></div><div class="metric-bar-track"><div class="metric-bar-fill" style="width:44%"></div></div></div>
+        <div class="metric-bar-item"><div class="metric-bar-header"><span class="metric-bar-name">📰 Display Ads</span><span class="metric-bar-val">2.4%</span></div><div class="metric-bar-track"><div class="metric-bar-fill" style="width:34%"></div></div></div>
       </div>
     </div>
-
     <div class="analytics-card fade-up">
       <div class="analytics-card-title">Chỉ số tương tác người dùng</div>
       <div class="analytics-card-sub">Tổng hợp tháng 3/2026</div>
-
       <div class="engagement-grid">
-        <div class="engagement-card">
-          <div class="engagement-icon">👁️</div>
-          <div class="engagement-value">2.4M</div>
-          <div class="engagement-label">Lượt hiển thị</div>
-        </div>
-        <div class="engagement-card">
-          <div class="engagement-icon">👆</div>
-          <div class="engagement-value">248K</div>
-          <div class="engagement-label">Lượt nhấp</div>
-        </div>
-        <div class="engagement-card">
-          <div class="engagement-icon">🛒</div>
-          <div class="engagement-value">11.6K</div>
-          <div class="engagement-label">Chuyển đổi</div>
-        </div>
-        <div class="engagement-card">
-          <div class="engagement-icon">💰</div>
-          <div class="engagement-value">312%</div>
-          <div class="engagement-label">ROI</div>
-        </div>
+        <div class="engagement-card"><div class="engagement-icon">👁️</div><div class="engagement-value">2.4M</div><div class="engagement-label">Lượt hiển thị</div></div>
+        <div class="engagement-card"><div class="engagement-icon">👆</div><div class="engagement-value">248K</div><div class="engagement-label">Lượt nhấp</div></div>
+        <div class="engagement-card"><div class="engagement-icon">🛒</div><div class="engagement-value">11.6K</div><div class="engagement-label">Chuyển đổi</div></div>
+        <div class="engagement-card"><div class="engagement-icon">💰</div><div class="engagement-value">312%</div><div class="engagement-label">ROI</div></div>
       </div>
-
-      <div style="margin-top: 20px; padding: 16px; background: var(--blue-50); border-radius: var(--radius-md); border: 1px solid var(--blue-100);">
-        <div style="font-size: 0.82rem; font-weight: 700; color: var(--blue-700); margin-bottom: 8px;">💡 Khuyến nghị tối ưu</div>
-        <div style="font-size: 0.8rem; color: var(--gray-600); line-height: 1.6;">
-          Tăng ngân sách TikTok Ads thêm 20% để tối ưu tỷ lệ chuyển đổi 6.2% — cao nhất trong tất cả kênh.
-        </div>
+      <div style="margin-top:20px;padding:16px;background:#eff6ff;border-radius:12px;border:1px solid #bfdbfe">
+        <div style="font-size:.82rem;font-weight:700;color:#1d4ed8;margin-bottom:8px">💡 Khuyến nghị tối ưu</div>
+        <div style="font-size:.8rem;color:#475569;line-height:1.6">Tăng ngân sách TikTok Ads thêm 20% để tối ưu tỷ lệ chuyển đổi 6.2% — cao nhất trong tất cả kênh.</div>
       </div>
     </div>
   </div>
 </section>
 
-<section id="testimonials" style="background: var(--white);">
-  <div style="text-align:center;">
+<!-- ══════════════ BLOG ══════════════ -->
+<section id="blog">
+  <div style="text-align:center">
+    <div class="section-tag">✦ Blog & Kiến thức</div>
+    <h2 class="section-title">Cập nhật xu hướng<br><span>marketing ngành rượu</span></h2>
+    <p class="section-sub" style="margin:0 auto">Kiến thức chuyên sâu từ đội ngũ chuyên gia với 8+ năm kinh nghiệm.</p>
+  </div>
+  <div class="blog-grid">
+    <div class="blog-card fade-up stagger-1">
+      <div class="blog-thumb bt1">🍷</div>
+      <div class="blog-body">
+        <div class="blog-cat">Xu hướng</div>
+        <div class="blog-title">5 xu hướng quảng cáo rượu nổi bật năm 2026</div>
+        <div class="blog-excerpt">AI targeting, short-form video và influencer marketing đang định hình lại cách thương hiệu rượu tiếp cận người tiêu dùng...</div>
+        <div class="blog-meta"><span>12/03/2026 · 5 phút</span><span class="blog-more">Đọc tiếp →</span></div>
+      </div>
+    </div>
+    <div class="blog-card fade-up stagger-2">
+      <div class="blog-thumb bt2">📊</div>
+      <div class="blog-body">
+        <div class="blog-cat">Case Study</div>
+        <div class="blog-title">Vang Đà Lạt tăng 340% doanh thu nhờ chiến dịch Tết</div>
+        <div class="blog-excerpt">Phân tích chi tiết chiến dịch marketing Tết 2026 của Dalat Winery – từ insight khách hàng đến execution và kết quả...</div>
+        <div class="blog-meta"><span>08/03/2026 · 8 phút</span><span class="blog-more">Đọc tiếp →</span></div>
+      </div>
+    </div>
+    <div class="blog-card fade-up stagger-3">
+      <div class="blog-thumb bt3">🎯</div>
+      <div class="blog-body">
+        <div class="blog-cat">Kiến thức</div>
+        <div class="blog-title">Hướng dẫn toàn diện: Quảng cáo rượu trên TikTok</div>
+        <div class="blog-excerpt">TikTok đang trở thành kênh quảng cáo hiệu quả nhất cho thương hiệu rượu trẻ. Cách tạo content viral mà vẫn tuân thủ quy định...</div>
+        <div class="blog-meta"><span>05/03/2026 · 6 phút</span><span class="blog-more">Đọc tiếp →</span></div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:40px">
+    <button class="btn-outline" style="padding:12px 32px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.9rem">Xem tất cả bài viết →</button>
+  </div>
+</section>
+
+<!-- ══════════════ TESTIMONIALS ══════════════ -->
+<section id="testimonials" style="background:#fff">
+  <div style="text-align:center">
     <div class="section-tag">✦ Khách hàng nói gì</div>
     <h2 class="section-title">Hàng trăm thương hiệu<br><span>đã tin tưởng chúng tôi</span></h2>
   </div>
+  <div class="testimonials-grid" style="margin-top:60px">
+    <div class="testimonial-card fade-up stagger-1"><div class="testimonial-stars">★★★★★</div><div class="testimonial-quote-icon">"</div><div class="testimonial-text">SpiritAds đã giúp thương hiệu vang Đà Lạt của chúng tôi tăng 340% doanh thu online chỉ trong 3 tháng. Đội ngũ tư vấn chuyên nghiệp, báo cáo minh bạch và rõ ràng.</div><div class="testimonial-author"><div class="author-avatar">TN</div><div><div class="author-name">Trần Ngọc Hà</div><div class="author-role">Giám đốc Marketing • Dalat Winery</div></div></div></div>
+    <div class="testimonial-card fade-up stagger-2"><div class="testimonial-stars">★★★★★</div><div class="testimonial-quote-icon">"</div><div class="testimonial-text">Dashboard thực sự ấn tượng – chúng tôi có thể theo dõi mọi chỉ số theo thời gian thực. ROI đạt 280% chỉ sau 60 ngày triển khai chiến dịch whisky cao cấp.</div><div class="testimonial-author"><div class="author-avatar" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8)">LM</div><div><div class="author-name">Lê Minh Tuấn</div><div class="author-role">CEO • Premium Spirits VN</div></div></div></div>
+    <div class="testimonial-card fade-up stagger-3"><div class="testimonial-stars">★★★★★</div><div class="testimonial-quote-icon">"</div><div class="testimonial-text">Tính năng nhắm mục tiêu theo AI của SpiritAds thực sự vượt trội. Chúng tôi tiết kiệm 40% ngân sách trong khi tăng gấp đôi số lượng khách hàng tiềm năng chất lượng.</div><div class="testimonial-author"><div class="author-avatar" style="background:linear-gradient(135deg,#6366f1,#818cf8)">PH</div><div><div class="author-name">Phạm Hoàng Anh</div><div class="author-role">Brand Manager • Sài Gòn Beer</div></div></div></div>
+  </div>
+</section>
 
-  <div class="testimonials-grid" style="margin-top: 60px;">
-    <div class="testimonial-card fade-up stagger-1">
-      <div class="testimonial-stars">★★★★★</div>
-      <div class="testimonial-quote-icon">"</div>
-      <div class="testimonial-text">
-        SpiritAds đã giúp thương hiệu vang Đà Lạt của chúng tôi tăng 340% doanh thu online chỉ trong 3 tháng. Đội ngũ tư vấn chuyên nghiệp, báo cáo minh bạch và rõ ràng.
+<!-- ══════════════ CEO / LEADERSHIP ══════════════ -->
+<section id="leadership">
+  <div class="lead-grid">
+    <!-- CEO Card -->
+    <div class="ceo-card fade-up">
+      <div class="ceo-av">
+        <!-- AI-generated SVG portrait of CEO -->
+        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Face skin -->
+          <ellipse cx="36" cy="34" rx="18" ry="20" fill="#fde8d0"/>
+          <!-- Hair -->
+          <path d="M18 30 C18 16 54 16 54 30 L54 24 C54 12 18 12 18 24Z" fill="#2c1810"/>
+          <!-- Left eye -->
+          <ellipse cx="29" cy="31" rx="3" ry="3.5" fill="#fff"/>
+          <circle cx="29.5" cy="31.5" r="2" fill="#2c1810"/>
+          <circle cx="30.2" cy="30.8" r="0.6" fill="#fff"/>
+          <!-- Right eye -->
+          <ellipse cx="43" cy="31" rx="3" ry="3.5" fill="#fff"/>
+          <circle cx="43.5" cy="31.5" r="2" fill="#2c1810"/>
+          <circle cx="44.2" cy="30.8" r="0.6" fill="#fff"/>
+          <!-- Eyebrows -->
+          <path d="M26 27 Q29 25.5 32 27" stroke="#2c1810" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <path d="M40 27 Q43 25.5 46 27" stroke="#2c1810" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <!-- Nose -->
+          <path d="M35 35 L33.5 40 Q36 41.5 38.5 40 L37 35" fill="#f5c5a0" stroke="#e8a882" stroke-width=".5"/>
+          <!-- Smile -->
+          <path d="M29 44 Q36 49 43 44" stroke="#c07040" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          <!-- Suit collar -->
+          <path d="M18 68 L24 54 L36 60 L48 54 L54 68Z" fill="#1e40af"/>
+          <path d="M30 54 L36 64 L42 54 L36 60Z" fill="#fff" opacity=".9"/>
+          <!-- Tie -->
+          <path d="M34 60 L36 70 L38 60 L36 64Z" fill="#1d4ed8"/>
+          <!-- Neck -->
+          <rect x="31" y="50" width="10" height="8" rx="2" fill="#fde8d0"/>
+          <!-- Ears -->
+          <ellipse cx="18" cy="34" rx="3" ry="4" fill="#fde8d0" stroke="#e8c4a0" stroke-width=".5"/>
+          <ellipse cx="54" cy="34" rx="3" ry="4" fill="#fde8d0" stroke="#e8c4a0" stroke-width=".5"/>
+        </svg>
       </div>
-      <div class="testimonial-author">
-        <div class="author-avatar">TN</div>
-        <div>
-          <div class="author-name">Hồ Gia Bảo</div>
-          <div class="author-role">Giám đốc Marketing • Dalat Winery</div>
-        </div>
+      <div class="ceo-name">Lê Nguyễn Hồng Phúc</div>
+      <div class="ceo-role">Founder & CEO – SpiritAds</div>
+      <div class="ceo-divider"></div>
+      <div class="ceo-quote">"Tầm nhìn của chúng tôi là xây dựng nền tảng quảng cáo rượu minh bạch, hiệu quả và có trách nhiệm nhất Việt Nam. Mỗi chiến dịch là cam kết với thương hiệu đối tác."</div>
+      <div class="ceo-socials">
+        <div class="ceo-soc" title="LinkedIn">💼</div>
+        <div class="ceo-soc" title="Facebook">📘</div>
+        <div class="ceo-soc" title="Email">✉️</div>
       </div>
     </div>
 
-    <div class="testimonial-card fade-up stagger-2">
-      <div class="testimonial-stars">★★★★★</div>
-      <div class="testimonial-quote-icon">"</div>
-      <div class="testimonial-text">
-        Dashboard thực sự ấn tượng – chúng tôi có thể theo dõi mọi chỉ số theo thời gian thực. ROI đạt 280% chỉ sau 60 ngày triển khai chiến dịch whisky cao cấp.
-      </div>
-      <div class="testimonial-author">
-        <div class="author-avatar" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">LM</div>
-        <div>
-          <div class="author-name">Cao Duy An</div>
-          <div class="author-role">CEO • Premium Spirits VN</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="testimonial-card fade-up stagger-3">
-      <div class="testimonial-stars">★★★★★</div>
-      <div class="testimonial-quote-icon">"</div>
-      <div class="testimonial-text">
-        Tính năng nhắm mục tiêu theo AI của SpiritAds thực sự vượt trội. Chúng tôi tiết kiệm 40% ngân sách trong khi tăng gấp đôi số lượng khách hàng tiềm năng chất lượng.
-      </div>
-      <div class="testimonial-author">
-        <div class="author-avatar" style="background: linear-gradient(135deg, #6366f1, #818cf8);">PH</div>
-        <div>
-          <div class="author-name">Phạm Hoàng Anh</div>
-          <div class="author-role">Brand Manager • Sài Gòn Beer</div>
-        </div>
+    <!-- Leadership content -->
+    <div class="lead-content">
+      <div class="section-tag">✦ Ban lãnh đạo</div>
+      <h2 class="section-title">Đội ngũ tiên phong<br><span>dẫn dắt SpiritAds</span></h2>
+      <div class="lead-desc">Với hơn 8 năm kinh nghiệm trong ngành marketing và công nghệ, đội ngũ lãnh đạo SpiritAds cam kết đưa thương hiệu rượu Việt Nam vươn tầm quốc tế thông qua chiến lược quảng cáo thông minh, sáng tạo và hiệu quả nhất thị trường.</div>
+      <div class="lead-stats">
+        <div class="lead-stat"><div class="lead-stat-n">8+</div><div class="lead-stat-l">Năm kinh nghiệm ngành</div></div>
+        <div class="lead-stat"><div class="lead-stat-n">50+</div><div class="lead-stat-l">Chuyên gia trong đội ngũ</div></div>
+        <div class="lead-stat"><div class="lead-stat-n">500+</div><div class="lead-stat-l">Thương hiệu đã phục vụ</div></div>
+        <div class="lead-stat"><div class="lead-stat-n">63</div><div class="lead-stat-l">Tỉnh thành phủ sóng</div></div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ══════════════ ABOUT ══════════════ -->
 <section id="about">
   <div class="about-grid">
     <div class="about-visual fade-up">
-      <div class="about-img-card">
-        <div class="about-img-placeholder about-img-1">🏢</div>
-        <div class="about-img-label">Văn phòng Hà Nội</div>
-      </div>
-      <div class="about-img-card">
-        <div class="about-img-placeholder about-img-2">👥</div>
-        <div class="about-img-label">Đội ngũ chuyên gia</div>
-      </div>
-      <div class="about-img-card">
-        <div class="about-img-placeholder about-img-3">🏆</div>
-        <div class="about-img-label">Giải thưởng 2025</div>
-      </div>
-      <div class="about-img-card">
-        <div class="about-img-placeholder about-img-4">🤝</div>
-        <div class="about-img-label">Đối tác chiến lược</div>
-      </div>
-      <div class="about-badge-overlay">
-        <div class="about-badge-num">8+</div>
-        <div class="about-badge-lbl">Năm kinh nghiệm</div>
-      </div>
+      <div class="about-img-card"><div class="about-img-placeholder about-img-1">🏢</div><div class="about-img-label">Văn phòng Hà Nội</div></div>
+      <div class="about-img-card"><div class="about-img-placeholder about-img-2">👥</div><div class="about-img-label">Đội ngũ chuyên gia</div></div>
+      <div class="about-img-card"><div class="about-img-placeholder about-img-3">🏆</div><div class="about-img-label">Giải thưởng 2025</div></div>
+      <div class="about-img-card"><div class="about-img-placeholder about-img-4">🤝</div><div class="about-img-label">Đối tác chiến lược</div></div>
+      <div class="about-badge-overlay"><div class="about-badge-num">8+</div><div class="about-badge-lbl">Năm kinh nghiệm</div></div>
     </div>
-
     <div class="about-content">
       <div class="section-tag">✦ Về chúng tôi</div>
       <h2 class="section-title">Tiên phong trong<br><span>quảng cáo rượu số</span></h2>
-
-      <div class="about-mission">
-        <div class="about-mission-text">
-          SpiritAds được thành lập năm 2018 với sứ mệnh tạo ra nền tảng quảng cáo rượu hàng đầu Việt Nam – kết nối thương hiệu với người tiêu dùng theo cách hiệu quả, có trách nhiệm và minh bạch.
-        </div>
-      </div>
-
+      <div class="about-mission"><div class="about-mission-text">SpiritAds được thành lập năm 2018 bởi Founder & CEO Lê Nguyễn Hồng Phúc với sứ mệnh tạo ra nền tảng quảng cáo rượu hàng đầu Việt Nam – kết nối thương hiệu với người tiêu dùng theo cách hiệu quả, có trách nhiệm và minh bạch.</div></div>
       <div class="about-features">
-        <div class="about-feature">
-          <div class="about-feature-icon">🎯</div>
-          <div class="about-feature-text">
-            <div class="about-feature-title">Đội ngũ 50+ chuyên gia</div>
-            <div class="about-feature-desc">Chuyên gia marketing, data analyst và creative director với 8+ năm kinh nghiệm ngành đồ uống.</div>
-          </div>
-        </div>
-        <div class="about-feature">
-          <div class="about-feature-icon">🌏</div>
-          <div class="about-feature-text">
-            <div class="about-feature-title">Phủ sóng toàn quốc</div>
-            <div class="about-feature-desc">Mạng lưới quảng cáo trải rộng tại 63 tỉnh thành với hơn 500 đối tác media uy tín.</div>
-          </div>
-        </div>
-        <div class="about-feature">
-          <div class="about-feature-icon">🔒</div>
-          <div class="about-feature-text">
-            <div class="about-feature-title">Tuân thủ pháp luật tuyệt đối</div>
-            <div class="about-feature-desc">Mọi chiến dịch đều được kiểm duyệt và tuân thủ nghiêm ngặt quy định pháp luật về quảng cáo rượu.</div>
-          </div>
-        </div>
+        <div class="about-feature"><div class="about-feature-icon">🎯</div><div class="about-feature-text"><div class="about-feature-title">Đội ngũ 50+ chuyên gia</div><div class="about-feature-desc">Chuyên gia marketing, data analyst và creative director với 8+ năm kinh nghiệm ngành đồ uống.</div></div></div>
+        <div class="about-feature"><div class="about-feature-icon">🌏</div><div class="about-feature-text"><div class="about-feature-title">Phủ sóng toàn quốc</div><div class="about-feature-desc">Mạng lưới quảng cáo trải rộng tại 63 tỉnh thành với hơn 500 đối tác media uy tín.</div></div></div>
+        <div class="about-feature"><div class="about-feature-icon">🔒</div><div class="about-feature-text"><div class="about-feature-title">Tuân thủ pháp luật tuyệt đối</div><div class="about-feature-desc">Mọi chiến dịch đều được kiểm duyệt và tuân thủ nghiêm ngặt quy định pháp luật về quảng cáo rượu.</div></div></div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ══════════════ FAQ ══════════════ -->
+<section id="faq" style="padding:100px 5%;background:#f8fafc">
+  <div style="text-align:center">
+    <div class="section-tag">✦ Câu hỏi thường gặp</div>
+    <h2 class="section-title">Giải đáp mọi<br><span>thắc mắc của bạn</span></h2>
+  </div>
+  <div class="faq-list">
+    <div class="faq-item open">
+      <div class="faq-q" onclick="faqToggle(this)">SpiritAds phù hợp với quy mô doanh nghiệp nào? <span class="faq-arr">▼</span></div>
+      <div class="faq-a"><div class="faq-a-inner">SpiritAds phục vụ từ startup nhỏ đến tập đoàn lớn. Gói Cơ bản phù hợp doanh nghiệp vừa và nhỏ, gói Chuyên nghiệp cho thương hiệu đang tăng trưởng, gói Doanh nghiệp cho tập đoàn với nhu cầu tùy chỉnh cao.</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="faqToggle(this)">Quy trình phê duyệt chiến dịch mất bao lâu? <span class="faq-arr">▼</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Thông thường trong vòng 2–4 giờ làm việc. Đội ngũ kiểm duyệt sẽ xem xét nội dung quảng cáo theo quy định pháp luật và tiêu chuẩn nền tảng trước khi phê duyệt.</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="faqToggle(this)">Tôi có thể theo dõi hiệu suất chiến dịch realtime không? <span class="faq-arr">▼</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Có. Dashboard của SpiritAds cập nhật dữ liệu theo thời gian thực bao gồm lượt hiển thị, click, tỷ lệ chuyển đổi, ngân sách đã tiêu và ROI. Bạn có thể truy cập 24/7 từ mọi thiết bị.</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="faqToggle(this)">SpiritAds có hỗ trợ quảng cáo rượu trên mạng xã hội không? <span class="faq-arr">▼</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Có, chúng tôi hỗ trợ Facebook, Instagram, TikTok, YouTube và Google Ads. Tất cả chiến dịch đều tuân thủ chính sách quảng cáo từng nền tảng và quy định pháp luật Việt Nam về quảng cáo đồ uống có cồn.</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="faqToggle(this)">Tôi có thể hủy gói đăng ký bất cứ lúc nào không? <span class="faq-arr">▼</span></div>
+      <div class="faq-a"><div class="faq-a-inner">Có, bạn có thể hủy gói bất cứ lúc nào mà không bị phạt. Dữ liệu chiến dịch sẽ được lưu trữ 90 ngày sau khi hủy để bạn xuất báo cáo.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
 <div class="cta-section">
   <div class="cta-content">
-    <div class="section-tag" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--sky-300); margin: 0 auto 24px;">✦ Bắt đầu ngay hôm nay</div>
+    <div class="section-tag" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#7dd3fc;margin:0 auto 24px">✦ Bắt đầu ngay hôm nay</div>
     <h2 class="cta-title">Sẵn sàng đưa thương hiệu<br>rượu của bạn lên tầm cao mới?</h2>
-    <p class="cta-desc">Đăng ký miễn phí ngay hôm nay và nhận tư vấn chiến lược quảng cáo từ đội ngũ chuyên gia của chúng tôi.</p>
+    <p class="cta-desc">Đăng ký miễn phí ngay hôm nay và nhận tư vấn chiến lược quảng cáo từ đội ngũ chuyên gia.</p>
     <div class="cta-btns">
-      <a href="#contact" class="btn-primary btn-large">🚀 Bắt đầu miễn phí</a>
-      <a href="#dashboard" class="btn-ghost btn-large">Xem demo live →</a>
+      <a href="#pricing" class="btn-primary btn-large">🚀 Bắt đầu miễn phí</a>
+      <a href="#contact" class="btn-ghost btn-large">Xem demo live →</a>
     </div>
   </div>
 </div>
 
+<!-- ══════════════ CONTACT ══════════════ -->
 <section id="contact">
-  <div style="text-align:center;">
+  <div style="text-align:center">
     <div class="section-tag">✦ Liên hệ</div>
     <h2 class="section-title">Hãy để chúng tôi<br><span>đồng hành cùng bạn</span></h2>
-    <p class="section-sub" style="margin: 0 auto;">Điền form bên dưới hoặc liên hệ trực tiếp – đội ngũ của chúng tôi sẽ phản hồi trong vòng 2 giờ làm việc.</p>
+    <p class="section-sub" style="margin:0 auto">Điền form bên dưới hoặc liên hệ trực tiếp – đội ngũ sẽ phản hồi trong vòng 2 giờ làm việc.</p>
   </div>
-
   <div class="contact-grid">
     <div class="contact-info">
       <div class="contact-info-card">
-        <h3 style="font-size: 1rem; font-weight: 700; color: var(--blue-900); margin-bottom: 20px;">Thông tin liên hệ</h3>
-
-        <div class="contact-method">
-          <div class="contact-method-icon">📍</div>
-          <div>
-            <div class="contact-method-label">Địa chỉ</div>
-            <div class="contact-method-value">Lagi, tỉnh Bình Thuận</div>
-          </div>
-        </div>
-
-        <div class="contact-method">
-          <div class="contact-method-icon">📞</div>
-          <div>
-            <div class="contact-method-label">Hotline</div>
-            <div class="contact-method-value">1800 6868 (Miễn phí)</div>
-          </div>
-        </div>
-
-        <div class="contact-method">
-          <div class="contact-method-icon">✉️</div>
-          <div>
-            <div class="contact-method-label">Email</div>
-            <div class="contact-method-value"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="375f525b5b587744475e455e43565344194159">[email&#160;protected]</a></div>
-          </div>
-        </div>
-
-        <div class="contact-method">
-          <div class="contact-method-icon">🕐</div>
-          <div>
-            <div class="contact-method-label">Giờ làm việc</div>
-            <div class="contact-method-value">Thứ 2 – Thứ 6: 8:00 – 18:00</div>
-          </div>
-        </div>
+        <h3 style="font-size:1rem;font-weight:700;color:#0f2044;margin-bottom:20px">Thông tin liên hệ</h3>
+        <div class="contact-method"><div class="contact-method-icon">📍</div><div><div class="contact-method-label">Địa chỉ</div><div class="contact-method-value">Tầng 12, 25 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội</div></div></div>
+        <div class="contact-method"><div class="contact-method-icon">📞</div><div><div class="contact-method-label">Hotline</div><div class="contact-method-value">1800 6868 (Miễn phí)</div></div></div>
+        <div class="contact-method"><div class="contact-method-icon">✉️</div><div><div class="contact-method-label">Email</div><div class="contact-method-value">contact@spiritads.vn</div></div></div>
+        <div class="contact-method"><div class="contact-method-icon">🕐</div><div><div class="contact-method-label">Giờ làm việc</div><div class="contact-method-value">Thứ 2 – Thứ 6: 8:00 – 18:00</div></div></div>
       </div>
-
       <div>
-        <h3 style="font-size: 0.88rem; font-weight: 700; color: var(--gray-700); margin-bottom: 14px;">Theo dõi chúng tôi</h3>
+        <h3 style="font-size:.88rem;font-weight:700;color:#475569;margin-bottom:14px">Theo dõi chúng tôi</h3>
         <div class="social-links">
           <a class="social-btn" href="#" title="Facebook">📘</a>
           <a class="social-btn" href="#" title="Instagram">📸</a>
@@ -887,31 +664,16 @@
         </div>
       </div>
     </div>
-
     <div class="contact-form-card fade-up">
-      <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--blue-900); margin-bottom: 8px;">Gửi yêu cầu tư vấn</h3>
-      <p style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 28px;">Chúng tôi sẽ liên hệ lại trong vòng 2 giờ làm việc.</p>
-
+      <h3 style="font-size:1.2rem;font-weight:700;color:#0f2044;margin-bottom:8px">Gửi yêu cầu tư vấn</h3>
+      <p style="font-size:.85rem;color:#94a3b8;margin-bottom:28px">Chúng tôi sẽ liên hệ lại trong vòng 2 giờ làm việc.</p>
       <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Họ và tên *</label>
-          <input type="text" class="form-input" placeholder="Nguyễn Văn An">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Số điện thoại *</label>
-          <input type="tel" class="form-input" placeholder="0912 345 678">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email *</label>
-          <input type="email" class="form-input" placeholder="email@congty.com">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tên công ty</label>
-          <input type="text" class="form-input" placeholder="Công ty TNHH ABC">
-        </div>
-        <div class="form-group full">
-          <label class="form-label">Dịch vụ quan tâm</label>
-          <select class="form-select">
+        <div class="form-group"><label class="form-label">Họ và tên *</label><input type="text" class="form-input" id="cf_name" placeholder="Nguyễn Văn An"></div>
+        <div class="form-group"><label class="form-label">Số điện thoại *</label><input type="tel" class="form-input" id="cf_phone" placeholder="0912 345 678"></div>
+        <div class="form-group"><label class="form-label">Email *</label><input type="email" class="form-input" id="cf_email" placeholder="email@congty.com"></div>
+        <div class="form-group"><label class="form-label">Tên công ty</label><input type="text" class="form-input" id="cf_company" placeholder="Công ty TNHH ABC"></div>
+        <div class="form-group full"><label class="form-label">Dịch vụ quan tâm</label>
+          <select class="form-select" id="cf_service">
             <option>-- Chọn dịch vụ --</option>
             <option>Quảng cáo sản phẩm rượu</option>
             <option>Quảng cáo thương hiệu</option>
@@ -920,39 +682,32 @@
             <option>Tư vấn chiến lược</option>
           </select>
         </div>
-        <div class="form-group full">
-          <label class="form-label">Nội dung tin nhắn</label>
-          <textarea class="form-textarea" placeholder="Mô tả nhu cầu quảng cáo của bạn, ngân sách dự kiến và mục tiêu chiến dịch..."></textarea>
-        </div>
-        <div class="form-group full">
-          <button class="btn-primary btn-large" style="width: 100%; border: none; cursor: pointer;">
-            📨 Gửi yêu cầu tư vấn
-          </button>
-        </div>
+        <div class="form-group full"><label class="form-label">Nội dung tin nhắn</label><textarea class="form-textarea" id="cf_message" placeholder="Mô tả nhu cầu quảng cáo, ngân sách dự kiến và mục tiêu chiến dịch..."></textarea></div>
+        <div class="form-group full"><button class="btn-primary btn-large" id="cfSubmit" style="width:100%;border:none;cursor:pointer">📨 Gửi yêu cầu tư vấn</button></div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ══════════════ FOOTER ══════════════ -->
 <footer>
   <div class="footer-grid">
     <div class="footer-brand">
       <a class="footer-logo" href="#home">
-        <div class="footer-logo-mark">🍶</div>
+        <div class="footer-logo-mark">
+          <svg width="26" height="26" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="10" fill="url(#flg)"/><defs><linearGradient id="flg" x1="0" y1="0" x2="36" y2="36"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient></defs><rect x="14" y="14" width="8" height="13" rx="3" fill="white" opacity=".9"/><rect x="16" y="9" width="4" height="6" rx="1.5" fill="white" opacity=".8"/><rect x="15.5" y="7" width="5" height="3" rx="1" fill="#38bdf8"/></svg>
+        </div>
         SpiritAds
       </a>
-      <div class="footer-desc">
-        Nền tảng quảng cáo rượu hàng đầu Việt Nam – kết nối thương hiệu với hàng triệu người tiêu dùng tiềm năng qua công nghệ AI tiên tiến và chiến lược marketing toàn diện.
-      </div>
+      <div class="footer-desc">Nền tảng quảng cáo rượu hàng đầu Việt Nam – kết nối thương hiệu với hàng triệu người tiêu dùng tiềm năng qua công nghệ AI tiên tiến và chiến lược marketing toàn diện.</div>
       <div class="footer-social">
-        <a class="footer-social-btn" href="#" title="Facebook">📘</a>
-        <a class="footer-social-btn" href="#" title="Instagram">📸</a>
-        <a class="footer-social-btn" href="#" title="LinkedIn">💼</a>
-        <a class="footer-social-btn" href="#" title="YouTube">▶️</a>
-        <a class="footer-social-btn" href="#" title="TikTok">🎵</a>
+        <a class="footer-social-btn" href="#">📘</a>
+        <a class="footer-social-btn" href="#">📸</a>
+        <a class="footer-social-btn" href="#">💼</a>
+        <a class="footer-social-btn" href="#">▶️</a>
+        <a class="footer-social-btn" href="#">🎵</a>
       </div>
     </div>
-
     <div class="footer-col">
       <div class="footer-col-title">Dịch vụ</div>
       <ul class="footer-links">
@@ -960,52 +715,44 @@
         <li><a href="#services">Quảng cáo thương hiệu</a></li>
         <li><a href="#services">Chiến dịch marketing</a></li>
         <li><a href="#services">Quảng cáo số</a></li>
-        <li><a href="#dashboard">Campaign Dashboard</a></li>
         <li><a href="#analytics">Phân tích dữ liệu</a></li>
       </ul>
     </div>
-
     <div class="footer-col">
-      <div class="footer-col-title">Thương hiệu</div>
+      <div class="footer-col-title">Sản phẩm</div>
       <ul class="footer-links">
-        <li><a href="#products">Vang Đà Lạt</a></li>
-        <li><a href="#products">Hapro Brandy</a></li>
-        <li><a href="#products">Sài Gòn Beer</a></li>
-        <li><a href="#products">Lúa Mới Vodka</a></li>
-        <li><a href="#products">Rượu Mơ Hà Nội</a></li>
-        <li><a href="#products">Xem tất cả →</a></li>
+        <li><a href="#pricing">Bảng giá</a></li>
+        <li><a href="#blog">Blog & Tin tức</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#products">Thương hiệu</a></li>
+        <li><a href="#analytics">Dashboard</a></li>
       </ul>
     </div>
-
     <div class="footer-col">
       <div class="footer-col-title">Công ty</div>
       <ul class="footer-links">
         <li><a href="#about">Về chúng tôi</a></li>
-        <li><a href="#about">Đội ngũ</a></li>
-        <li><a href="#about">Đối tác</a></li>
+        <li><a href="#leadership">Ban lãnh đạo</a></li>
         <li><a href="#contact">Tuyển dụng</a></li>
         <li><a href="#contact">Báo chí</a></li>
         <li><a href="#contact">Liên hệ</a></li>
       </ul>
     </div>
-
     <div class="footer-col">
       <div class="footer-col-title">Hỗ trợ</div>
       <ul class="footer-links">
-        <li><a href="#">Trung tâm trợ giúp</a></li>
+        <li><a href="#faq">Trung tâm trợ giúp</a></li>
         <li><a href="#">Hướng dẫn sử dụng</a></li>
         <li><a href="#">API Documentation</a></li>
-        <li><a href="#">Blog & Tin tức</a></li>
         <li><a href="#">Cộng đồng</a></li>
         <li><a href="#">Status page</a></li>
       </ul>
     </div>
   </div>
-
   <div class="footer-bottom">
     <div class="footer-copy">
-      © 2026 SpiritAds Vietnam. Bảo lưu mọi quyền. <br>
-      <span style="font-size: 0.75rem; opacity: 0.6;">⚠️ Rượu bia có hại cho sức khỏe. Không bán cho người dưới 18 tuổi.</span>
+      © 2026 SpiritAds Vietnam. Sáng lập bởi <strong>Lê Nguyễn Hồng Phúc</strong> – Founder & CEO. Bảo lưu mọi quyền.<br>
+      <span style="font-size:.75rem;opacity:.6">⚠️ Rượu bia có hại cho sức khỏe. Không bán cho người dưới 18 tuổi.</span>
     </div>
     <div class="footer-legal">
       <a href="#">Điều khoản sử dụng</a>
@@ -1016,92 +763,202 @@
   </div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-  // Navbar scroll effect
-  const nav = document.getElementById('mainNav');
-  window.addEventListener('scroll', () => {
-    nav.classList.toggle('scrolled', window.scrollY > 20);
-  });
+<!-- Cookie Banner -->
+<div id="cookieBanner">
+  <div class="ck-text"><strong>🍪 SpiritAds sử dụng Cookie</strong><br>Chúng tôi dùng cookie để cải thiện trải nghiệm của bạn. Bằng cách tiếp tục, bạn đồng ý với <a href="#" style="color:#38bdf8">chính sách cookie</a>.</div>
+  <div class="ck-btns">
+    <button class="ck-yes" onclick="acceptCookie()">Chấp nhận</button>
+    <button class="ck-no" onclick="declineCookie()">Từ chối</button>
+  </div>
+</div>
 
-  // Mobile menu toggle
-  function toggleMenu() {
-    document.getElementById('mobileMenu').classList.toggle('open');
-  }
+<!-- Live Chat -->
+<button id="chatBtn" onclick="toggleChat()" title="Chat hỗ trợ">💬</button>
+<div id="chatWin">
+  <div class="chat-hdr">
+    <div class="chat-hdr-t">💬 Hỗ trợ trực tuyến</div>
+    <div class="chat-hdr-s"><span class="chat-online"></span>Đội ngũ SpiritAds – Trực tuyến</div>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg bot">Xin chào! 👋 Tôi là trợ lý SpiritAds. Tôi có thể giúp gì cho bạn hôm nay?</div>
+    <div class="chat-msg bot">Bạn có thể hỏi về dịch vụ, bảng giá hoặc cách tạo chiến dịch quảng cáo.</div>
+  </div>
+  <div class="chat-inp-wrap">
+    <input class="chat-inp" id="chatIn" placeholder="Nhập tin nhắn..." onkeypress="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
 
-  // Smooth active nav links
-  const sections = document.querySelectorAll('section[id], div[id="stats"]');
-  const navLinks = document.querySelectorAll('.nav-links a');
+<!-- Back to top -->
+<button id="btt" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        navLinks.forEach(link => {
-          link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`);
-        });
-      }
-    });
-  }, { threshold: 0.3 });
-
-  sections.forEach(s => observer.observe(s));
-
-  // Scroll animations
-  const fadeElements = document.querySelectorAll('.fade-up');
-  const fadeObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, { threshold: 0.1 });
-
-  fadeElements.forEach(el => fadeObserver.observe(el));
-
-  // Filter tabs
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-
-  // Dashboard nav items
-  document.querySelectorAll('.dash-nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-      document.querySelectorAll('.dash-nav-item').forEach(i => i.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-
-  // Animate metric bars on scroll
-  const barObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.querySelectorAll('.metric-bar-fill').forEach(bar => {
-          const width = bar.style.width;
-          bar.style.width = '0';
-          setTimeout(() => { bar.style.width = width; }, 100);
-        });
-      }
-    });
-  }, { threshold: 0.3 });
-
-  document.querySelectorAll('.analytics-card').forEach(el => barObserver.observe(el));
-
-  // Close mobile menu on outside click
-  document.addEventListener('click', (e) => {
-    const menu    const menu = document.getElementById('mobileMenu');
-    if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !e.target.closest('.hamburger')) {
-      menu.classList.remove('open');
-    }
-  });
-</script>
-
-<!-- ═══════════════════════════════════ -->
-<!-- SPIRITADS FULL-STACK JS MODULES    -->
-<!-- ═══════════════════════════════════ -->
+<!-- JS -->
 <script src="/js/api.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/dashboard.js"></script>
 <script src="/js/app.js"></script>
+<script>
+// ── Scroll effects ─────────────────────────────────
+const nav = document.getElementById('mainNav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 20);
+  document.getElementById('btt').classList.toggle('show', window.scrollY > 400);
+  const d = document.documentElement;
+  document.getElementById('readProgress').style.width = (window.scrollY / (d.scrollHeight - d.clientHeight) * 100) + '%';
+});
+
+// ── Mobile menu ─────────────────────────────────────
+function toggleMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  const m = document.getElementById('mobileMenu');
+  if (m.classList.contains('open') && !m.contains(e.target) && !e.target.closest('.hamburger')) m.classList.remove('open');
+  if (!e.target.closest('.notif-wrap')) document.getElementById('notifDrop')?.classList.remove('open');
+  if (!e.target.closest('#chatWin') && !e.target.closest('#chatBtn') && e.target.id !== 'chatBtn') {
+    // don't close chat on random clicks
+  }
+});
+
+// ── Active nav ──────────────────────────────────────
+document.querySelectorAll('section[id]').forEach(s => {
+  new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) document.querySelectorAll('.nav-links a').forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+e.target.id)); });
+  }, {threshold:.3}).observe(s);
+});
+
+// ── Fade-up animations ──────────────────────────────
+const fo = new IntersectionObserver(entries => entries.forEach(e => { if(e.isIntersecting)e.target.classList.add('visible');}), {threshold:.1});
+document.querySelectorAll('.fade-up').forEach(el => fo.observe(el));
+
+// ── Metric bar animation ────────────────────────────
+const bo = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.querySelectorAll('.metric-bar-fill').forEach(b => { const w=b.style.width; b.style.width='0'; setTimeout(()=>b.style.width=w,100);});});
+},{threshold:.3});
+document.querySelectorAll('.analytics-card').forEach(el => bo.observe(el));
+
+// ── Filter tabs ─────────────────────────────────────
+document.querySelectorAll('.filter-tab').forEach(t => t.addEventListener('click', function() {
+  document.querySelectorAll('.filter-tab').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');
+}));
+
+// ── FAQ accordion ───────────────────────────────────
+function faqToggle(el) { el.parentElement.classList.toggle('open'); }
+
+// ── Dark mode ───────────────────────────────────────
+let dark = localStorage.getItem('dark') === '1';
+function applyDark(){ document.body.style.filter = dark ? 'invert(1) hue-rotate(180deg)' : ''; document.getElementById('darkBtn').textContent = dark ? '☀️' : '🌙'; }
+function toggleDark(){ dark=!dark; localStorage.setItem('dark',dark?'1':'0'); applyDark(); }
+applyDark();
+
+// ── Cookie ──────────────────────────────────────────
+if (localStorage.getItem('ck')) document.getElementById('cookieBanner').classList.add('hidden');
+function acceptCookie(){ localStorage.setItem('ck','1'); document.getElementById('cookieBanner').classList.add('hidden'); }
+function declineCookie(){ document.getElementById('cookieBanner').classList.add('hidden'); }
+
+// ── Live chat ───────────────────────────────────────
+function toggleChat(){ document.getElementById('chatWin').classList.toggle('open'); }
+const botReplies = [
+  'Cảm ơn bạn đã liên hệ! Đội ngũ sẽ phản hồi trong vài phút.',
+  'Bạn có thể xem bảng giá tại mục Bảng giá hoặc gọi hotline 1800 6868.',
+  'Chúng tôi hỗ trợ Facebook, Google, TikTok, YouTube và nhiều kênh khác.',
+  'Để tạo chiến dịch, bạn cần đăng ký tài khoản Nhà quảng cáo trước nhé!',
+  'Đội ngũ tư vấn sẽ liên hệ lại với bạn sớm nhất có thể! 😊',
+];
+let botIdx = 0;
+function sendChat(){
+  const inp = document.getElementById('chatIn');
+  const msg = inp.value.trim(); if(!msg) return;
+  const msgs = document.getElementById('chatMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  inp.value = '';
+  setTimeout(()=>{ msgs.innerHTML += `<div class="chat-msg bot">${botReplies[botIdx++%botReplies.length]}</div>`; msgs.scrollTop=msgs.scrollHeight; }, 900);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Notifications ───────────────────────────────────
+const Notif = {
+  async load(){
+    if (!Auth?.isLoggedIn()) return;
+    try {
+      const r = await api.get('/notifications', true);
+      if (!r.success) return;
+      const badge = document.getElementById('notifBadge');
+      const list = document.getElementById('notifList');
+      if (badge){ badge.textContent=r.unreadCount; badge.classList.toggle('show',r.unreadCount>0); }
+      if (!list) return;
+      if (!r.data.length){ list.innerHTML='<div class="notif-empty">🔔 Không có thông báo nào</div>'; return; }
+      const icons = {info:'ℹ️',success:'✅',warning:'⚠️',error:'❌',system:'⚙️'};
+      list.innerHTML = r.data.map(n=>`
+        <div class="notif-item ${n.isRead?'':'unread'}" onclick="Notif.markRead('${n._id}')">
+          <div class="n-icon ${n.type}">${icons[n.type]||'🔔'}</div>
+          <div style="flex:1;min-width:0">
+            <div class="n-title">${n.title}</div>
+            <div class="n-msg">${n.message.slice(0,80)}${n.message.length>80?'...':''}</div>
+            <div class="n-time">${new Date(n.createdAt).toLocaleString('vi-VN')}</div>
+          </div>
+        </div>`).join('');
+    } catch(e){}
+  },
+  async markRead(id){
+    try{ await api.patch(`/notifications/${id}/read`,{},true); this.load(); }catch(e){}
+  },
+  async readAll(){
+    try{ await api.patch('/notifications/read-all',{},true); this.load(); if(typeof Toast!=='undefined') Toast.success('Đã đánh dấu tất cả là đã đọc'); }catch(e){}
+  },
+  toggle(){
+    document.getElementById('notifDrop').classList.toggle('open');
+    this.load();
+  }
+};
+
+// ── Show notif bell when logged in ─────────────────
+const _origUpdate = typeof UI !== 'undefined' ? UI.updateNavForAuth?.bind(UI) : null;
+setTimeout(()=>{
+  if (typeof UI !== 'undefined' && UI.updateNavForAuth) {
+    const orig = UI.updateNavForAuth.bind(UI);
+    UI.updateNavForAuth = function(){
+      orig();
+      const w = document.getElementById('notifWrap');
+      const loginBtn = document.getElementById('navLoginBtn');
+      const regBtn = document.getElementById('navRegisterBtn');
+      const li = Auth.isLoggedIn();
+      if(w) w.style.display = li ? 'block' : 'none';
+      if(li) Notif.load();
+    };
+  }
+},100);
+setInterval(()=>{ if(typeof Auth!=='undefined'&&Auth.isLoggedIn()) Notif.load(); }, 30000);
+
+// ── Contact form ────────────────────────────────────
+document.getElementById('cfSubmit')?.addEventListener('click', async ()=>{
+  const btn = document.getElementById('cfSubmit');
+  const data = {
+    fullName: document.getElementById('cf_name').value.trim(),
+    phone: document.getElementById('cf_phone').value.trim(),
+    email: document.getElementById('cf_email').value.trim(),
+    company: document.getElementById('cf_company').value.trim(),
+    service: document.getElementById('cf_service').value,
+    message: document.getElementById('cf_message').value.trim(),
+  };
+  if(!data.fullName||!data.phone||!data.email){
+    if(typeof Toast!=='undefined') Toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc (*)');
+    return;
+  }
+  if(typeof Loader!=='undefined') Loader.show(btn,'Đang gửi...');
+  try {
+    const r = await api.post('/contact', data);
+    if(typeof Loader!=='undefined') Loader.hide(btn);
+    if(r.success){
+      if(typeof Toast!=='undefined') Toast.success(r.message||'Gửi thành công! Chúng tôi sẽ liên hệ sớm.');
+      ['cf_name','cf_phone','cf_email','cf_company','cf_message'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    } else {
+      if(typeof Toast!=='undefined') Toast.error(r.message||'Có lỗi xảy ra');
+    }
+  } catch(e){
+    if(typeof Loader!=='undefined') Loader.hide(btn);
+    if(typeof Toast!=='undefined') Toast.error('Không thể kết nối máy chủ');
+  }
+});
+</script>
 </body>
 </html>
