@@ -16,7 +16,7 @@ const publicRoutes = require('./routes/public');
 
 connectDB();
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', process.env.TRUST_CF_PROXY === 'true' ? 1 : false);
 
 // ══════════════════════════════════════════════════════════════
 //  ANTI-DDoS CONFIG
@@ -175,10 +175,11 @@ async function autoBlockCF(ip, reason) {
 //  HELPER: lấy real IP (ưu tiên Cloudflare header)
 // ══════════════════════════════════════════════════════════════
 function getRealIp(req) {
-  return req.headers['cf-connecting-ip']
-      || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-      || req.socket.remoteAddress
-      || req.ip;
+  if (process.env.TRUST_CF_PROXY === 'true') {
+    return req.headers['cf-connecting-ip'] || req.socket.remoteAddress;
+  }
+  // Dùng IP thật từ socket — không thể giả mạo
+  return req.socket.remoteAddress || req.ip;
 }
 
 // ══════════════════════════════════════════════════════════════
