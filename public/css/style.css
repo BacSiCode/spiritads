@@ -1068,6 +1068,40 @@ footer {
 .footer-legal a:hover { color: rgba(255,255,255,0.6); }
 
 /* ─── STATS SECTION ─── */
+.stats-band {
+  background: var(--blue-900);
+  padding: 60px 5%;
+}
+.stats-band-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.stats-band-item { }
+.stats-band-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+  margin-bottom: 10px;
+}
+.stats-band-num span { color: var(--sky-300); }
+.stats-band-label {
+  color: rgba(255,255,255,0.65);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .stats-band-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .stats-band-num  { font-size: 2.2rem; }
+}
+@media (max-width: 480px) {
+  .stats-band-grid { grid-template-columns: 1fr; }
+}
 #stats { background: var(--blue-600); padding: 80px 5%; }
 .stats-inner {
   display: grid; grid-template-columns: repeat(4, 1fr);
