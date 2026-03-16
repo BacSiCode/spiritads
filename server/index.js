@@ -290,11 +290,13 @@ app.use('/api',           publicRoutes);
 
 // ── Admin Security API ────────────────────────────────────────
 const { protect, authorize } = require('./middleware/auth');
-app.get(   '/api/admin/security/status',    protect, authorize('admin'), antiDDoS.adminHandlers.getStatus);
-app.post(  '/api/admin/security/ban',       protect, authorize('admin'), antiDDoS.adminHandlers.banIp);
-app.delete('/api/admin/security/ban/:ip',   protect, authorize('admin'), antiDDoS.adminHandlers.unbanIp);
-app.get(   '/api/admin/security/blacklist', protect, authorize('admin'), antiDDoS.adminHandlers.getBlacklist);
-app.get(   '/api/admin/security/attacks',   protect, authorize('admin'), antiDDoS.adminHandlers.getAttackLog);
+app.get(   '/api/admin/security/status',        protect, authorize('admin'), antiDDoS.adminHandlers.getStatus);
+app.post(  '/api/admin/security/ban',           protect, authorize('admin'), antiDDoS.adminHandlers.banIp);
+app.delete('/api/admin/security/ban/:ip',       protect, authorize('admin'), antiDDoS.adminHandlers.unbanIp);
+app.post(  '/api/admin/security/ban-subnet',    protect, authorize('admin'), antiDDoS.adminHandlers.banSubnet);
+app.post(  '/api/admin/security/cloud-block',   protect, authorize('admin'), antiDDoS.adminHandlers.toggleCloudBlock);
+app.get(   '/api/admin/security/blacklist',     protect, authorize('admin'), antiDDoS.adminHandlers.getBlacklist);
+app.get(   '/api/admin/security/attacks',       protect, authorize('admin'), antiDDoS.adminHandlers.getAttackLog);
 
 // ══════════════════════════════════════════════════════════════
 //  9. Health check + SPA fallback
