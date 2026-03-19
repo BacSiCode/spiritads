@@ -11,7 +11,7 @@ const behaviorEngine = require('./behaviorEngine');
 const proxyDetector  = require('./proxyDetector');
 const fragmentDetector = require('./fragmentDetector');
 
-function getCfg() { return require('../../config/security.config'); }
+function getCfg() { return require('../../config/baomat._config'); }
 
 // ══════════════════════════════════════════════════════════════
 //  LẤY REAL IP
