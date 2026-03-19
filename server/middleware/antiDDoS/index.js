@@ -25,7 +25,7 @@ const noop      = (_req, _res, next) => next();
 let   _cfg      = null;
 let   _limiters = null;
 
-function getCfg()      { if (!_cfg)      _cfg      = require('../../config/security.config'); return _cfg; }
+function getCfg()      { if (!_cfg)      _cfg      = require('../../config/baomat._config'); return _cfg; }
 function getLimiters() { if (!_limiters) _limiters = buildRateLimiters(); return _limiters; }
 
 // ── applyTo(app) ──────────────────────────────────────────────
