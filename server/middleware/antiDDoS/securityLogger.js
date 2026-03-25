@@ -5,7 +5,7 @@
 const LEVELS = { INFO: 'INFO', WARN: 'WARN', BLOCK: 'BLOCK', CRITICAL: 'CRITICAL' };
 const alertCooldowns = new Map();
 
-function getCfg() { return require('../../config/security.config'); }
+function getCfg() { return require('../../config/baomat._config.js'); }
 
 function shouldSendAlert(key) {
   const cfg  = getCfg();

@@ -1,221 +1,215 @@
 // ============================================================
-//  server/middleware/antiddos/behaviorEngine.js
-//  Chống: Low-and-Slow DDoS, IP rotation dưới threshold,
-//         Container attack với IP sạch
+//  server/middleware/antiddos/proxyDetector.js
+//  Phát hiện: Proxy, VPN, Tor, Residential Proxy, Datacenter IP
 // ============================================================
 
 // ══════════════════════════════════════════════════════════════
-//  SLIDING WINDOW COUNTER — đếm chính xác hơn fixed window
+//  PROXY HEADER SIGNATURES
+//  Proxy thường để lại dấu vết trong headers
 // ══════════════════════════════════════════════════════════════
-class SlidingWindow {
-  constructor(windowMs, buckets = 10) {
-    this.windowMs   = windowMs;
-    this.buckets    = buckets;
-    this.bucketMs   = windowMs / buckets;
-    this.data       = new Map(); // key → Array(buckets)
-  }
-
-  increment(key) {
-    const now        = Date.now();
-    const bucketIdx  = Math.floor((now % this.windowMs) / this.bucketMs);
-    if (!this.data.has(key)) this.data.set(key, new Array(this.buckets).fill({ count: 0, time: 0 }));
-
-    const arr = this.data.get(key);
-    // Reset bucket cũ nếu đã hết window
-    if (now - arr[bucketIdx].time > this.windowMs) {
-      arr[bucketIdx] = { count: 0, time: now };
-    }
-    arr[bucketIdx].count++;
-    return this.getCount(key);
-  }
-
-  getCount(key) {
-    const now = Date.now();
-    const arr = this.data.get(key);
-    if (!arr) return 0;
-    return arr.reduce((sum, b) => sum + (now - b.time < this.windowMs ? b.count : 0), 0);
-  }
-
-  cleanup() {
-    const now = Date.now();
-    for (const [key, arr] of this.data.entries()) {
-      const total = arr.reduce((s, b) => s + (now - b.time < this.windowMs ? b.count : 0), 0);
-      if (total === 0) this.data.delete(key);
-    }
-  }
-}
+const PROXY_HEADERS = [
+  'x-forwarded-for',
+  'x-forwarded',
+  'x-cluster-client-ip',
+  'forwarded-for',
+  'forwarded',
+  'via',
+  'x-real-ip',
+  'x-proxy-id',
+  'mt-proxy-id',
+  'x-tinyproxy',
+  'x-original-url',
+  'x-rewrite-url',
+  'x-custom-ip-authorization',
+  'x-forwarded-host',
+  'x-forwarded-proto',
+  'x-forwarded-port',
+  'x-remote-ip',
+  'x-remote-addr',
+  'x-originating-ip',
+  'x-wap-profile',
+];
 
 // ══════════════════════════════════════════════════════════════
-//  BEHAVIOR SCORE ENGINE
-//  Mỗi IP có điểm score 0-100, càng cao càng nguy hiểm
-//  → Không cần trigger threshold cứng
+//  KNOWN PROXY/VPN ASN PREFIXES
+//  Residential proxy thường dùng các dải IP này
 // ══════════════════════════════════════════════════════════════
-class BehaviorEngine {
+const PROXY_RANGES = [
+  // Tor exit nodes (common ranges)
+  '185.220.', '185.107.', '185.129.',
+  '195.176.', '199.249.', '162.247.',
+  '185.100.', '171.25.',  '176.10.',
+  // Common VPN providers
+  '104.128.', '198.54.',  '23.106.',
+  '45.142.',  '185.159.', '194.165.',
+  // Common proxy services
+  '91.108.',  '149.154.', '91.242.',
+  '194.165.', '185.220.',
+];
+
+// ══════════════════════════════════════════════════════════════
+//  BROWSER FINGERPRINT SCORING
+//  Browser thật có nhiều headers hơn và theo thứ tự nhất định
+// ══════════════════════════════════════════════════════════════
+const BROWSER_REQUIRED_HEADERS = [
+  'accept',
+  'accept-language',
+  'accept-encoding',
+  'user-agent',
+];
+
+const BROWSER_HEADER_ORDER = {
+  chrome: ['host','connection','cache-control','upgrade-insecure-requests','user-agent','accept','accept-encoding','accept-language'],
+  firefox: ['host','user-agent','accept','accept-language','accept-encoding','connection'],
+  safari: ['host','accept','user-agent','accept-language','accept-encoding','connection'],
+};
+
+class ProxyDetector {
   constructor() {
-    // Score map: ip → { score, history, firstSeen, lastSeen }
-    this.scores       = new Map();
-    this.patterns     = new Map(); // ip → request pattern data
-
-    // Sliding windows cho nhiều mốc thời gian
-    this.win10s  = new SlidingWindow(10  * 1000, 5);   // 10 giây
-    this.win1m   = new SlidingWindow(60  * 1000, 10);  // 1 phút
-    this.win5m   = new SlidingWindow(5 * 60000,  10);  // 5 phút
-    this.win1h   = new SlidingWindow(60 * 60000, 12);  // 1 giờ
-
-    // Global windows
-    this.globalWin1m = new SlidingWindow(60000, 10);
-    this.globalWin5m = new SlidingWindow(5 * 60000, 10);
-
-    // Subnet tracking
-    this.subnetScores = new Map(); // subnet/24 → cumulativeScore
+    // Cache kết quả detect (tránh re-analyze cùng IP)
+    this.cache    = new Map(); // ip → { score, isProxy, reason, cachedAt }
+    this.cacheTTL = 5 * 60000; // cache 5 phút
 
     setInterval(() => this._cleanup(), 10 * 60000);
   }
 
-  // ── Phân tích request và tính score ──────────────────────────
-  analyze(req, ip) {
-    const ua      = req.headers['user-agent'] || '';
-    const path    = req.path;
-    const method  = req.method;
-    const now     = Date.now();
+  // ── Phân tích request để detect proxy ──────────────────────
+  analyze(req) {
+    const ip  = this._getIp(req);
+    const now = Date.now();
 
-    // Cập nhật sliding windows
-    const c10s = this.win10s.increment(ip);
-    const c1m  = this.win1m.increment(ip);
-    const c5m  = this.win5m.increment(ip);
-    const c1h  = this.win1h.increment(ip);
+    // Check cache
+    const cached = this.cache.get(ip);
+    if (cached && now - cached.cachedAt < this.cacheTTL) return cached;
 
-    this.globalWin1m.increment('__global__');
-    this.globalWin5m.increment('__global__');
+    const result = this._doAnalyze(req, ip);
+    this.cache.set(ip, { ...result, cachedAt: now });
+    return result;
+  }
 
-    // Khởi tạo pattern data
-    if (!this.patterns.has(ip)) {
-      this.patterns.set(ip, {
-        firstSeen:    now,
-        paths:        [],
-        methods:      [],
-        uas:          new Set(),
-        intervals:    [],
-        lastReqTime:  now,
-        score:        0,
-        scoreHistory: [],
-      });
+  _doAnalyze(req, ip) {
+    let score   = 0;
+    const flags = [];
+
+    // ── 1. Proxy headers (0-40 điểm) ─────────────────────────
+    const proxyHeadersFound = PROXY_HEADERS.filter(h => req.headers[h] !== undefined);
+
+    // Via header = definitely proxy
+    if (req.headers['via']) {
+      score += 30;
+      flags.push(`via_header:${req.headers['via'].slice(0,30)}`);
     }
 
-    const p = this.patterns.get(ip);
-
-    // Tính interval giữa các request
-    const interval = now - p.lastReqTime;
-    p.lastReqTime  = now;
-    if (p.intervals.length < 50) p.intervals.push(interval);
-    else { p.intervals.shift(); p.intervals.push(interval); }
-
-    p.paths.push(path);
-    if (p.paths.length > 50) p.paths.shift();
-    p.uas.add(ua.slice(0, 80));
-
-    // ── Tính điểm nguy hiểm ──────────────────────────────────
-    let score = 0;
-
-    // 1. Tốc độ request (0-30 điểm)
-    if (c10s  > 5)  score += 10;   // > 5 req/10s = đáng ngờ
-    if (c10s  > 10) score += 10;   // > 10 req/10s = nguy hiểm
-    if (c1m   > 30) score += 10;   // > 30 req/phút = threshold thấp
-    if (c1m   > 40) score += 10;   // > 40 req/phút
-    if (c5m   > 100) score += 10;  // > 100 req/5 phút
-    if (c1h   > 500) score += 10;  // > 500 req/giờ
-
-    // 2. Pattern đều đặn bất thường (bot gửi đều nhau) (0-20 điểm)
-    if (p.intervals.length >= 5) {
-      const avg      = p.intervals.reduce((a, b) => a + b, 0) / p.intervals.length;
-      const variance = p.intervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / p.intervals.length;
-      const stdDev   = Math.sqrt(variance);
-      // Bot thường có stdDev rất thấp (request đều đặn)
-      if (stdDev < 100 && avg < 2000 && p.intervals.length >= 10) score += 15;
-      if (stdDev < 50  && avg < 1000 && p.intervals.length >= 10) score += 5;
+    // Nhiều proxy headers = proxy chain
+    if (proxyHeadersFound.length > 2) {
+      score += proxyHeadersFound.length * 5;
+      flags.push(`proxy_headers:${proxyHeadersFound.length}`);
     }
 
-    // 3. Path lặp lại (bot thường tấn công 1 endpoint) (0-15 điểm)
-    if (p.paths.length >= 10) {
-      const pathCounts = {};
-      p.paths.forEach(pt => pathCounts[pt] = (pathCounts[pt] || 0) + 1);
-      const maxPathRepeat = Math.max(...Object.values(pathCounts));
-      const repeatRatio   = maxPathRepeat / p.paths.length;
-      if (repeatRatio > 0.8) score += 15;  // 80%+ request vào cùng 1 path
-      else if (repeatRatio > 0.6) score += 8;
+    // X-Forwarded-For có nhiều IP = proxy chain
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+      const ips = xff.split(',').map(s => s.trim());
+      if (ips.length > 2) {
+        score += 20;
+        flags.push(`proxy_chain:${ips.length}_hops`);
+      }
     }
 
-    // 4. Headers thiếu (0-15 điểm)
-    if (!req.headers['accept'])           score += 5;
-    if (!req.headers['accept-language'])  score += 5;
-    if (!req.headers['accept-encoding'])  score += 5;
+    // ── 2. Known proxy IP ranges (0-50 điểm) ─────────────────
+    if (PROXY_RANGES.some(r => ip.startsWith(r))) {
+      score += 50;
+      flags.push('known_proxy_range');
+    }
 
-    // 5. UA robot (0-10 điểm)
-    const robotUas = ['python','java','go-http','axios','node-fetch','got/','undici'];
-    if (robotUas.some(r => ua.toLowerCase().includes(r))) score += 10;
+    // ── 3. Browser fingerprint (0-30 điểm) ───────────────────
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
 
-    // 6. Thời gian hoạt động bất thường (0-10 điểm)
-    // Bot thường chạy 24/7, không có pattern nghỉ
-    const hour = new Date().getHours();
-    if (c5m > 50 && (hour >= 1 && hour <= 5)) score += 10; // tấn công ban đêm
+    // Missing browser headers
+    const missingBrowserHeaders = BROWSER_REQUIRED_HEADERS.filter(h => !req.headers[h]);
+    if (missingBrowserHeaders.length > 0) {
+      score += missingBrowserHeaders.length * 8;
+      flags.push(`missing_headers:${missingBrowserHeaders.join(',')}`);
+    }
 
-    // Lưu score
-    p.score = Math.min(score, 100);
-    p.scoreHistory.push({ time: now, score: p.score });
-    if (p.scoreHistory.length > 20) p.scoreHistory.shift();
+    // UA nói là Chrome nhưng thiếu headers của Chrome
+    if (ua.includes('chrome') && !req.headers['accept-language']) {
+      score += 25;
+      flags.push('chrome_without_accept_language');
+    }
 
-    this.scores.set(ip, p.score);
+    // UA nói là browser nhưng Accept header không phải HTML
+    if ((ua.includes('mozilla') || ua.includes('chrome') || ua.includes('safari')) &&
+        req.headers['accept'] &&
+        !req.headers['accept'].includes('text/html') &&
+        !req.headers['accept'].includes('*/*')) {
+      score += 15;
+      flags.push('browser_ua_non_html_accept');
+    }
 
-    // Cộng dồn vào subnet score
-    const subnet = ip.split('.').slice(0, 3).join('.');
-    const subScore = (this.subnetScores.get(subnet) ?? 0) + (score > 30 ? 1 : 0);
-    this.subnetScores.set(subnet, subScore);
+    // ── 4. Connection patterns (0-20 điểm) ───────────────────
+    // Proxy thường dùng HTTP/1.0 hoặc close connection
+    if (req.headers['connection'] === 'close') {
+      score += 10;
+      flags.push('connection_close');
+    }
 
+    // Pragma: no-cache thường là proxy artifact
+    if (req.headers['pragma'] === 'no-cache' && req.headers['cache-control'] === 'no-cache') {
+      score += 5;
+      flags.push('proxy_cache_headers');
+    }
+
+    // ── 5. ASN pattern — datacenter IP (0-20 điểm) ────────────
+    // IP bắt đầu bằng các range của datacenter phổ biến
+    const dcRanges = [
+      '104.', '45.', '167.', '198.', '172.', '142.',
+      '157.', '162.', '185.', '188.', '193.', '194.',
+      '195.', '199.', '202.', '203.', '209.', '213.',
+    ];
+    if (dcRanges.some(r => ip.startsWith(r))) {
+      // Chỉ tính nếu có dấu hiệu khác
+      if (score > 20) {
+        score += 10;
+        flags.push('datacenter_ip_range');
+      }
+    }
+
+    const isProxy  = score >= 50;
+    const isSuspect = score >= 30;
+
+    return { ip, score, isProxy, isSuspect, flags, proxyHeadersFound };
+  }
+
+  _getIp(req) {
+    if (process.env.TRUST_CF_PROXY === 'true') {
+      return req.headers['cf-connecting-ip'] || req.socket?.remoteAddress || req.ip;
+    }
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+      const first = xff.split(',')[0].trim();
+      if (!this._isPrivate(first)) return first;
+    }
+    return (req.socket?.remoteAddress || req.ip || '0.0.0.0').replace('::ffff:', '');
+  }
+
+  _isPrivate(ip) {
+    return ['127.','10.','192.168.','::1'].some(p => ip.startsWith(p));
+  }
+
+  stats() {
     return {
-      score:       p.score,
-      c10s, c1m, c5m, c1h,
-      subnet,
-      subnetScore: subScore,
-      intervals:   p.intervals.slice(-5),
+      cached: this.cache.size,
+      proxiesDetected: [...this.cache.values()].filter(v => v.isProxy).length,
     };
   }
 
-  getScore(ip) { return this.scores.get(ip) ?? 0; }
-
-  getSubnetScore(subnet) { return this.subnetScores.get(subnet) ?? 0; }
-
   _cleanup() {
-    this.win10s.cleanup();
-    this.win1m.cleanup();
-    this.win5m.cleanup();
-    this.win1h.cleanup();
     const now = Date.now();
-    for (const [ip, p] of this.patterns.entries()) {
-      if (now - p.lastReqTime > 30 * 60000) {
-        this.patterns.delete(ip);
-        this.scores.delete(ip);
-      }
+    for (const [ip, v] of this.cache.entries()) {
+      if (now - v.cachedAt > this.cacheTTL * 2) this.cache.delete(ip);
     }
-    for (const [subnet] of this.subnetScores.entries()) {
-      if ((this.subnetScores.get(subnet) ?? 0) === 0) this.subnetScores.delete(subnet);
-    }
-  }
-
-  // Stats cho monitor
-  topSuspicious(n = 10) {
-    return [...this.scores.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, n)
-      .map(([ip, score]) => {
-        const p = this.patterns.get(ip);
-        return {
-          ip, score,
-          c1m:      this.win1m.getCount(ip),
-          c1h:      this.win1h.getCount(ip),
-          firstSeen: p?.firstSeen ? new Date(p.firstSeen).toLocaleTimeString('vi-VN') : '?',
-        };
-      });
   }
 }
 
-module.exports = new BehaviorEngine();
+module.exports = new ProxyDetector();
