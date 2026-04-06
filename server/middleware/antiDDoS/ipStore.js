@@ -1,68 +1,59 @@
 // ============================================================
-//  server/middleware/antiddos/ipStore.js — Container DDoS v3
+//  server/middleware/antiddos/ipStore.js
+//  In-memory store cho IP tracking, blacklist, connection count
+//  Dùng Map để tốc độ O(1) — không cần Redis với traffic < 50k req/day
 // ============================================================
 
 class IpStore {
   constructor() {
-    this.blacklist    = new Map(); // ip → { expiresAt, reason, violations, banCount }
-    this.hitMap       = new Map(); // ip → [timestamps]
-    this.connMap      = new Map(); // ip → number
-    this.violationMap = new Map(); // ip → number
-    this.attackLog    = [];
-    this.totalBlocked = 0;
+    // blacklist: Map<ip, { bannedAt: number, reason: string, violations: number }>
+    this.blacklist = new Map();
 
-    // ── Subnet tracking (chống container DDoS) ──────────────
-    this.subnetMap    = new Map(); // subnet/24 → Set of unique IPs
-    this.subnetBanned = new Map(); // subnet → { expiresAt, reason }
-    this.subnetHits   = new Map(); // subnet → [timestamps]
+    // hitMap: Map<ip, number[]>  — timestamps của requests trong sliding window
+    this.hitMap = new Map();
 
-    // ── UA fingerprint per subnet ────────────────────────────
-    this.subnetUaMap  = new Map(); // subnet:uaHash → Set of IPs
+    // connMap: Map<ip, number>  — số connection đang mở
+    this.connMap = new Map();
 
+    // violationMap: Map<ip, number>  — tổng số lần vi phạm
+    this.violationMap = new Map();
+
+    // Cleanup mỗi 5 phút
     this._cleanupInterval = setInterval(() => this._cleanup(), 5 * 60 * 1000);
-    this._cleanupInterval.unref?.();
+    this._cleanupInterval.unref?.(); // không giữ process sống nếu không có việc khác
   }
 
-  // ── IP Blacklist ───────────────────────────────────────────
+  // ── Blacklist ──────────────────────────────────────────────
 
-  ban(ip, reason = 'auto', durationMs = 2 * 60 * 60 * 1000) {
-    const current  = this.blacklist.get(ip);
-    const banCount = (current?.banCount ?? 0) + 1;
+  ban(ip, reason = 'auto', durationMs = 30 * 60 * 1000) {
+    const current = this.blacklist.get(ip);
     this.blacklist.set(ip, {
       bannedAt:   Date.now(),
       expiresAt:  Date.now() + durationMs,
       reason,
-      violations: this.violationMap.get(ip) ?? 0,
-      banCount,
+      violations: (current?.violations ?? 0) + 1,
     });
-    this.totalBlocked++;
   }
 
   unban(ip) {
     this.blacklist.delete(ip);
-    this.violationMap.delete(ip);
   }
 
   isBanned(ip) {
-    const e = this.blacklist.get(ip);
-    if (!e) return false;
-    if (Date.now() > e.expiresAt) { this.blacklist.delete(ip); return false; }
+    const entry = this.blacklist.get(ip);
+    if (!entry) return false;
+    if (entry.expiresAt && Date.now() > entry.expiresAt) {
+      this.blacklist.delete(ip);
+      return false;
+    }
     return true;
   }
 
-  getBanInfo(ip)  { return this.blacklist.get(ip) ?? null; }
-  getBanCount(ip) { return this.blacklist.get(ip)?.banCount ?? 0; }
-
-  // ── Violations ─────────────────────────────────────────────
-
-  addViolation(ip) {
-    const v = (this.violationMap.get(ip) ?? 0) + 1;
-    this.violationMap.set(ip, v);
-    return v;
+  getBanInfo(ip) {
+    return this.blacklist.get(ip) ?? null;
   }
-  getViolations(ip) { return this.violationMap.get(ip) ?? 0; }
 
-  // ── Hit tracking ───────────────────────────────────────────
+  // ── Hit tracking (sliding window) ──────────────────────────
 
   recordHit(ip, windowMs = 60000) {
     const now  = Date.now();
@@ -72,12 +63,17 @@ class IpStore {
     return hits.length;
   }
 
+  getHitCount(ip, windowMs = 60000) {
+    const now  = Date.now();
+    const hits = (this.hitMap.get(ip) ?? []).filter(t => now - t < windowMs);
+    return hits.length;
+  }
+
   // ── Connections ────────────────────────────────────────────
 
   openConn(ip) {
-    const c = (this.connMap.get(ip) ?? 0) + 1;
-    this.connMap.set(ip, c);
-    return c;
+    this.connMap.set(ip, (this.connMap.get(ip) ?? 0) + 1);
+    return this.connMap.get(ip);
   }
 
   closeConn(ip) {
@@ -86,99 +82,58 @@ class IpStore {
     else this.connMap.set(ip, c);
   }
 
-  // ── Subnet tracking (Container DDoS) ──────────────────────
-
-  recordSubnetHit(subnet) {
-    // Đếm unique IPs trong subnet/24 trong 1 phút
-    const now    = Date.now();
-    const key    = `subnet:${subnet}`;
-    const hits   = (this.subnetHits.get(key) ?? []).filter(t => now - t < 60000);
-    hits.push(now);
-    this.subnetHits.set(key, hits);
-    return hits.length;
+  getConnCount(ip) {
+    return this.connMap.get(ip) ?? 0;
   }
 
-  banSubnet(subnet, reason, durationMs = 60 * 60 * 1000) {
-    this.subnetBanned.set(subnet, {
-      expiresAt: Date.now() + durationMs,
-      reason,
-      bannedAt: Date.now(),
-    });
-    this.totalBlocked++;
-    console.log(`\x1b[35m🚫 SUBNET-BAN: ${subnet}.x – ${reason}\x1b[0m`);
+  // ── Violations ─────────────────────────────────────────────
+
+  addViolation(ip) {
+    const v = (this.violationMap.get(ip) ?? 0) + 1;
+    this.violationMap.set(ip, v);
+    return v;
   }
 
-  isSubnetBanned(subnet) {
-    const e = this.subnetBanned.get(subnet);
-    if (!e) return false;
-    if (Date.now() > e.expiresAt) { this.subnetBanned.delete(subnet); return false; }
-    return true;
+  getViolations(ip) {
+    return this.violationMap.get(ip) ?? 0;
   }
 
-  // ── UA fingerprint per subnet ─────────────────────────────
-
-  recordUaInSubnet(subnet, uaHash) {
-    const key = `${subnet}:${uaHash}`;
-    if (!this.subnetUaMap.has(key)) this.subnetUaMap.set(key, new Set());
-    // Dùng timestamp thay vì IP để tránh memory leak
-    this.subnetUaMap.get(key).add(Date.now());
-  }
-
-  getUaCountInSubnet(subnet, uaHash) {
-    const key  = `${subnet}:${uaHash}`;
-    const hits = this.subnetUaMap.get(key);
-    if (!hits) return 0;
-    // Chỉ đếm trong 1 phút gần nhất
-    const now = Date.now();
-    const fresh = [...hits].filter(t => now - t < 60000);
-    this.subnetUaMap.set(key, new Set(fresh));
-    return fresh.length;
-  }
-
-  // ── Attack log ─────────────────────────────────────────────
-
-  logAttack(ip, type, detail = '') {
-    this.attackLog.push({ time: new Date(), ip, type, detail });
-    if (this.attackLog.length > 500) this.attackLog.shift();
-  }
-
-  // ── Stats ──────────────────────────────────────────────────
+  // ── Stats (cho monitor dashboard) ─────────────────────────
 
   stats() {
     return {
-      bannedIPs:      this.blacklist.size,
-      bannedSubnets:  this.subnetBanned.size,
-      trackedIPs:     this.hitMap.size,
-      activeConns:    [...this.connMap.values()].reduce((a, b) => a + b, 0),
-      totalBlocked:   this.totalBlocked,
-      topOffenders:   [...this.blacklist.entries()]
+      bannedIPs:    this.blacklist.size,
+      trackedIPs:   this.hitMap.size,
+      activeConns:  [...this.connMap.values()].reduce((a, b) => a + b, 0),
+      topOffenders: [...this.blacklist.entries()]
         .sort((a, b) => b[1].violations - a[1].violations)
         .slice(0, 10)
         .map(([ip, info]) => ({ ip, ...info })),
-      bannedSubnetList: [...this.subnetBanned.entries()]
-        .map(([subnet, info]) => ({ subnet, ...info }))
-        .slice(0, 10),
-      recentAttacks:  this.attackLog.slice(-30).reverse(),
     };
   }
 
-  // ── Cleanup ────────────────────────────────────────────────
+  // ── Internal cleanup ───────────────────────────────────────
 
   _cleanup() {
     const now = Date.now();
-    for (const [ip, e]      of this.blacklist.entries())   if (now > e.expiresAt)  this.blacklist.delete(ip);
-    for (const [s, e]       of this.subnetBanned.entries()) if (now > e.expiresAt) this.subnetBanned.delete(s);
-    for (const [ip, hits]   of this.hitMap.entries()) {
-      const fresh = hits.filter(t => now - t < 5 * 60 * 1000);
-      if (!fresh.length) this.hitMap.delete(ip); else this.hitMap.set(ip, fresh);
+
+    // Xóa expired bans
+    for (const [ip, info] of this.blacklist.entries()) {
+      if (info.expiresAt && now > info.expiresAt) this.blacklist.delete(ip);
     }
-    for (const [key, hits]  of this.subnetHits.entries()) {
+
+    // Xóa stale hit windows (> 5 phút không có request)
+    for (const [ip, hits] of this.hitMap.entries()) {
       const fresh = hits.filter(t => now - t < 5 * 60 * 1000);
-      if (!fresh.length) this.subnetHits.delete(key); else this.subnetHits.set(key, fresh);
+      if (fresh.length === 0) this.hitMap.delete(ip);
+      else this.hitMap.set(ip, fresh);
     }
   }
 
-  destroy() { clearInterval(this._cleanupInterval); }
+  destroy() {
+    clearInterval(this._cleanupInterval);
+  }
 }
 
+// Singleton — dùng chung cho toàn app
 module.exports = new IpStore();
