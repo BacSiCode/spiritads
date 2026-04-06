@@ -1,117 +1,113 @@
 // ============================================================
-//  server/middleware/antiddos/index.js
-//  ─── ENTRY POINT ───────────────────────────────────────────
+//  server/middleware/antiddos/index.js — Enterprise Grade
 //
-//  Cách dùng trong server/index.js:
-//
+//  Dùng trong server/index.js:
 //    const antiDDoS = require('./middleware/antiddos');
-//    antiDDoS.applyTo(app);                        // global middlewares
-//    app.use('/api/auth/login',  antiDDoS.authLimiter);
+//    antiDDoS.applyTo(app);
+//    app.use('/api/auth/login',    antiDDoS.authLimiter);
 //    app.use('/api/auth/register', antiDDoS.authLimiter);
-//    app.use('/api/contact',     antiDDoS.contactLimiter);
-//    app.use('/api/',            antiDDoS.apiLimiter);
-//
+//    app.use('/api/contact',       antiDDoS.contactLimiter);
+//    app.use('/api/',              antiDDoS.apiLimiter);
 // ============================================================
 
-const cfg    = require('../../config/security.config');
 const store  = require('./ipStore');
 const logger = require('./securityLogger');
 const {
   buildRateLimiters,
-  botDetectionMiddleware,
+  honeypotMiddleware,
   ipBlockingMiddleware,
   connectionProtectionMiddleware,
   slowRequestMiddleware,
+  botDetectionMiddleware,
 } = require('./layers');
 
-// ── Tạo rate limiters một lần duy nhất (tránh re-create mỗi request) ──
-const limiters = buildRateLimiters();
+const noop    = (_req, _res, next) => next();
+let   _cfg    = null;
+let   _limiters = null;
 
-// ─────────────────────────────────────────────────────────────
-//  Noop middleware — dùng khi Anti-DDoS bị TẮT
-//  Không có bất kỳ logic nào → zero overhead
-// ─────────────────────────────────────────────────────────────
-const noop = (_req, _res, next) => next();
+function getCfg() {
+  if (!_cfg) _cfg = require('../../config/security.config');
+  return _cfg;
+}
 
-// ─────────────────────────────────────────────────────────────
-//  applyTo(app) — gắn global middlewares vào Express app
-//  Thứ tự quan trọng: IP check → slow → conn → bot → global rate
-// ─────────────────────────────────────────────────────────────
+function getLimiters() {
+  if (!_limiters) _limiters = buildRateLimiters();
+  return _limiters;
+}
+
+// ── applyTo(app) ──────────────────────────────────────────────
 function applyTo(app) {
+  const cfg = getCfg();
+
   if (!cfg.enabled) {
-    // Anti-DDoS BỊ TẮT — log một lần duy nhất và return
-    console.log('\x1b[33m⚠️  [SECURITY] ANTI_DDOS_PROTECTION=false — Tất cả bảo vệ đã bị tắt.\x1b[0m');
+    console.log('\x1b[33m⚠️  [SECURITY] Anti-DDoS TẮT — zero protection\x1b[0m');
     return;
   }
 
-  console.log('\x1b[32m🛡️  [SECURITY] Anti-DDoS kích hoạt:\x1b[0m', {
-    rateLimit:          cfg.rateLimit.connectionProtection,
-    botDetection:       cfg.botDetection.enabled,
-    ipBlocking:         cfg.ipBlocking.enabled,
-    connectionProtect:  cfg.connectionProtection.enabled,
-    slowRequest:        cfg.slowRequest.enabled,
-    cloudflareAutoBlock: cfg.cloudflare.enabled,
-  });
+  console.log('\x1b[32m🛡️  [SECURITY] Anti-DDoS Enterprise kích hoạt\x1b[0m');
+  console.log(`   ├ Honeypot:          ✅`);
+  console.log(`   ├ IP Blocking:       ${cfg.ipBlocking?.enabled ? '✅' : '❌'}`);
+  console.log(`   ├ Slow Request:      ${cfg.slowRequest?.enabled ? '✅' : '❌'}`);
+  console.log(`   ├ Conn Protection:   ${cfg.connectionProtection?.enabled ? '✅' : '❌'}`);
+  console.log(`   ├ Bot Detection:     ${cfg.botDetection?.enabled ? '✅' : '❌'}`);
+  console.log(`   ├ Rate Limit:        ${cfg.rateLimit?.enabled ? '✅' : '❌'}`);
+  console.log(`   ├ Telegram Alert:    ${process.env.TELEGRAM_BOT_TOKEN ? '✅' : '❌ (chưa cấu hình)'}`);
+  console.log(`   └ CF Auto-Block:     ${cfg.cloudflare?.enabled ? '✅' : '❌ (chưa cấu hình)'}`);
 
-  // Trust proxy (cần cho express-rate-limit + real IP)
-  app.set('trust proxy', cfg.cloudflare.trustProxy ? 1 : false);
+  app.set('trust proxy', cfg.cloudflare?.trustProxy ? 1 : false);
 
-  // Layer 3 — IP Blocking (phải chạy đầu tiên để fail-fast)
-  if (cfg.ipBlocking.enabled)          app.use(ipBlockingMiddleware);
-
-  // Layer 5 — Slow Request (set timeout sớm)
-  if (cfg.slowRequest.enabled)         app.use(slowRequestMiddleware);
-
-  // Layer 4 — Connection Protection
-  if (cfg.connectionProtection.enabled) app.use(connectionProtectionMiddleware);
-
-  // Layer 2 — Bot Detection + Anomaly
-  if (cfg.botDetection.enabled)        app.use(botDetectionMiddleware);
-
-  // Layer 1 — Global rate limit (áp dụng cho toàn bộ routes)
-  if (cfg.rateLimit.enabled)           app.use(limiters.global);
+  // Thứ tự quan trọng!
+  app.use(honeypotMiddleware);                                        // Honeypot — bẫy scanner
+  if (cfg.ipBlocking?.enabled)           app.use(ipBlockingMiddleware);
+  if (cfg.slowRequest?.enabled)          app.use(slowRequestMiddleware);
+  if (cfg.connectionProtection?.enabled) app.use(connectionProtectionMiddleware);
+  if (cfg.botDetection?.enabled)         app.use(botDetectionMiddleware);
+  if (cfg.rateLimit?.enabled)            app.use(getLimiters().global);
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Per-route limiters — export để dùng trên route cụ thể
-//  Nếu Anti-DDoS tắt, trả về noop → không ảnh hưởng route
-// ─────────────────────────────────────────────────────────────
-const apiLimiter     = cfg.enabled && cfg.rateLimit.enabled ? limiters.api     : noop;
-const authLimiter    = cfg.enabled && cfg.rateLimit.enabled ? limiters.auth    : noop;
-const contactLimiter = cfg.enabled && cfg.rateLimit.enabled ? limiters.contact : noop;
+// ── Per-route limiters ────────────────────────────────────────
+const apiLimiter     = () => { const c = getCfg(); return c.enabled && c.rateLimit?.enabled ? getLimiters().api     : noop; };
+const authLimiter    = () => { const c = getCfg(); return c.enabled && c.rateLimit?.enabled ? getLimiters().auth    : noop; };
+const contactLimiter = () => { const c = getCfg(); return c.enabled && c.rateLimit?.enabled ? getLimiters().contact : noop; };
 
-// ─────────────────────────────────────────────────────────────
-//  Admin API — thao tác thủ công qua /api/admin/security
-// ─────────────────────────────────────────────────────────────
+// ── Admin handlers ────────────────────────────────────────────
 const adminHandlers = {
-  // GET /api/admin/security/status
   getStatus(req, res) {
+    const cfg = getCfg();
     res.json({
       success: true,
       data: {
         enabled: cfg.enabled,
+        telegram: !!process.env.TELEGRAM_BOT_TOKEN,
+        cloudflare: cfg.cloudflare?.enabled ?? false,
         layers: {
-          rateLimit:          cfg.rateLimit.enabled,
-          botDetection:       cfg.botDetection.enabled,
-          ipBlocking:         cfg.ipBlocking.enabled,
-          connectionProtect:  cfg.connectionProtection.enabled,
-          slowRequest:        cfg.slowRequest.enabled,
+          honeypot:          true,
+          ipBlocking:        cfg.ipBlocking?.enabled,
+          slowRequest:       cfg.slowRequest?.enabled,
+          connProtection:    cfg.connectionProtection?.enabled,
+          botDetection:      cfg.botDetection?.enabled,
+          rateLimit:         cfg.rateLimit?.enabled,
+        },
+        config: {
+          banThreshold:    cfg.ipBlocking?.banThreshold,
+          banDurationMin:  Math.ceil((cfg.ipBlocking?.banDurationMs ?? 0) / 60000),
+          hardBanAfter:    cfg.ipBlocking?.hardBanAfter,
+          anomalyRpm:      cfg.botDetection?.anomalyRpmThreshold,
+          maxConnPerIp:    cfg.connectionProtection?.maxConnPerIp,
         },
         store: store.stats(),
       },
     });
   },
 
-  // POST /api/admin/security/ban  { ip, reason?, durationMin? }
   banIp(req, res) {
-    const { ip, reason = 'manual', durationMin = 60 } = req.body;
+    const { ip, reason = 'manual_admin', durationMin = 60 } = req.body;
     if (!ip) return res.status(400).json({ success: false, message: 'ip required' });
     store.ban(ip, reason, durationMin * 60 * 1000);
     logger.info('manual_ban', { ip, reason, durationMin, by: req.user?.email });
     res.json({ success: true, message: `Đã ban IP ${ip} trong ${durationMin} phút` });
   },
 
-  // DELETE /api/admin/security/ban/:ip
   unbanIp(req, res) {
     const { ip } = req.params;
     store.unban(ip);
@@ -119,19 +115,22 @@ const adminHandlers = {
     res.json({ success: true, message: `Đã unban IP ${ip}` });
   },
 
-  // GET /api/admin/security/blacklist
   getBlacklist(req, res) {
     res.json({ success: true, data: store.stats().topOffenders });
+  },
+
+  getAttackLog(req, res) {
+    res.json({ success: true, data: store.stats().recentAttacks });
   },
 };
 
 module.exports = {
   applyTo,
-  apiLimiter,
-  authLimiter,
-  contactLimiter,
+  get apiLimiter()     { return apiLimiter(); },
+  get authLimiter()    { return authLimiter(); },
+  get contactLimiter() { return contactLimiter(); },
   adminHandlers,
-  store,   // expose để monitor dashboard dùng
-  config:  cfg,
-  isEnabled: () => cfg.enabled,
+  store,
+  get config() { return getCfg(); },
+  isEnabled: () => getCfg().enabled,
 };

@@ -1,57 +1,60 @@
 // ============================================================
-//  server/middleware/antiddos/ipStore.js
-//  In-memory store cho IP tracking, blacklist, connection count
-//  Dùng Map để tốc độ O(1) — không cần Redis với traffic < 50k req/day
+//  server/middleware/antiddos/ipStore.js  — Enterprise Grade
 // ============================================================
 
 class IpStore {
   constructor() {
-    // blacklist: Map<ip, { bannedAt: number, reason: string, violations: number }>
-    this.blacklist = new Map();
+    this.blacklist     = new Map(); // ip → { bannedAt, expiresAt, reason, violations, banCount }
+    this.hitMap        = new Map(); // ip → [timestamps]
+    this.connMap       = new Map(); // ip → number
+    this.violationMap  = new Map(); // ip → number
+    this.attackLog     = [];        // { time, ip, type, detail }
+    this.totalBlocked  = 0;
 
-    // hitMap: Map<ip, number[]>  — timestamps của requests trong sliding window
-    this.hitMap = new Map();
-
-    // connMap: Map<ip, number>  — số connection đang mở
-    this.connMap = new Map();
-
-    // violationMap: Map<ip, number>  — tổng số lần vi phạm
-    this.violationMap = new Map();
-
-    // Cleanup mỗi 5 phút
     this._cleanupInterval = setInterval(() => this._cleanup(), 5 * 60 * 1000);
-    this._cleanupInterval.unref?.(); // không giữ process sống nếu không có việc khác
+    this._cleanupInterval.unref?.();
   }
 
   // ── Blacklist ──────────────────────────────────────────────
 
   ban(ip, reason = 'auto', durationMs = 30 * 60 * 1000) {
-    const current = this.blacklist.get(ip);
+    const current  = this.blacklist.get(ip);
+    const banCount = (current?.banCount ?? 0) + 1;
     this.blacklist.set(ip, {
       bannedAt:   Date.now(),
       expiresAt:  Date.now() + durationMs,
       reason,
-      violations: (current?.violations ?? 0) + 1,
+      violations: this.violationMap.get(ip) ?? 0,
+      banCount,
     });
+    this.totalBlocked++;
   }
 
   unban(ip) {
     this.blacklist.delete(ip);
+    this.violationMap.delete(ip);
   }
 
   isBanned(ip) {
-    const entry = this.blacklist.get(ip);
-    if (!entry) return false;
-    if (entry.expiresAt && Date.now() > entry.expiresAt) {
-      this.blacklist.delete(ip);
-      return false;
-    }
+    const e = this.blacklist.get(ip);
+    if (!e) return false;
+    if (Date.now() > e.expiresAt) { this.blacklist.delete(ip); return false; }
     return true;
   }
 
-  getBanInfo(ip) {
-    return this.blacklist.get(ip) ?? null;
+  getBanInfo(ip) { return this.blacklist.get(ip) ?? null; }
+
+  getBanCount(ip) { return this.blacklist.get(ip)?.banCount ?? 0; }
+
+  // ── Violations ─────────────────────────────────────────────
+
+  addViolation(ip) {
+    const v = (this.violationMap.get(ip) ?? 0) + 1;
+    this.violationMap.set(ip, v);
+    return v;
   }
+
+  getViolations(ip) { return this.violationMap.get(ip) ?? 0; }
 
   // ── Hit tracking (sliding window) ──────────────────────────
 
@@ -63,17 +66,12 @@ class IpStore {
     return hits.length;
   }
 
-  getHitCount(ip, windowMs = 60000) {
-    const now  = Date.now();
-    const hits = (this.hitMap.get(ip) ?? []).filter(t => now - t < windowMs);
-    return hits.length;
-  }
-
   // ── Connections ────────────────────────────────────────────
 
   openConn(ip) {
-    this.connMap.set(ip, (this.connMap.get(ip) ?? 0) + 1);
-    return this.connMap.get(ip);
+    const c = (this.connMap.get(ip) ?? 0) + 1;
+    this.connMap.set(ip, c);
+    return c;
   }
 
   closeConn(ip) {
@@ -82,58 +80,43 @@ class IpStore {
     else this.connMap.set(ip, c);
   }
 
-  getConnCount(ip) {
-    return this.connMap.get(ip) ?? 0;
+  // ── Attack log ─────────────────────────────────────────────
+
+  logAttack(ip, type, detail = '') {
+    this.attackLog.push({ time: new Date(), ip, type, detail });
+    if (this.attackLog.length > 500) this.attackLog.shift();
   }
 
-  // ── Violations ─────────────────────────────────────────────
-
-  addViolation(ip) {
-    const v = (this.violationMap.get(ip) ?? 0) + 1;
-    this.violationMap.set(ip, v);
-    return v;
-  }
-
-  getViolations(ip) {
-    return this.violationMap.get(ip) ?? 0;
-  }
-
-  // ── Stats (cho monitor dashboard) ─────────────────────────
+  // ── Stats ──────────────────────────────────────────────────
 
   stats() {
     return {
       bannedIPs:    this.blacklist.size,
       trackedIPs:   this.hitMap.size,
       activeConns:  [...this.connMap.values()].reduce((a, b) => a + b, 0),
+      totalBlocked: this.totalBlocked,
       topOffenders: [...this.blacklist.entries()]
         .sort((a, b) => b[1].violations - a[1].violations)
         .slice(0, 10)
         .map(([ip, info]) => ({ ip, ...info })),
+      recentAttacks: this.attackLog.slice(-20).reverse(),
     };
   }
 
-  // ── Internal cleanup ───────────────────────────────────────
+  // ── Cleanup ────────────────────────────────────────────────
 
   _cleanup() {
     const now = Date.now();
-
-    // Xóa expired bans
-    for (const [ip, info] of this.blacklist.entries()) {
-      if (info.expiresAt && now > info.expiresAt) this.blacklist.delete(ip);
-    }
-
-    // Xóa stale hit windows (> 5 phút không có request)
+    for (const [ip, info] of this.blacklist.entries())
+      if (now > info.expiresAt) this.blacklist.delete(ip);
     for (const [ip, hits] of this.hitMap.entries()) {
       const fresh = hits.filter(t => now - t < 5 * 60 * 1000);
-      if (fresh.length === 0) this.hitMap.delete(ip);
+      if (!fresh.length) this.hitMap.delete(ip);
       else this.hitMap.set(ip, fresh);
     }
   }
 
-  destroy() {
-    clearInterval(this._cleanupInterval);
-  }
+  destroy() { clearInterval(this._cleanupInterval); }
 }
 
-// Singleton — dùng chung cho toàn app
 module.exports = new IpStore();
