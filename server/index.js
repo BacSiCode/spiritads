@@ -7,7 +7,7 @@ const path    = require('path');
 
 const connectDB    = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
-const antiDDoS     = require('./middleware/antiddos');
+const antiDDoS     = require('./middleware/antiDDoS');
 
 const authRoutes     = require('./routes/auth');
 const campaignRoutes = require('./routes/campaigns');
