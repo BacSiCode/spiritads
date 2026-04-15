@@ -28,7 +28,7 @@ function botDetectionMiddleware(req, res, next) {
   }
 
   const ip = getRealIp(req);
-  const rpm = store.trackRpm(ip);
+  const rpm = store.recordHit(ip, 60000);
   const cfg = getCfg().botDetection;
 
   // 1. Phân tích "HumanScore" (Chỉ số người thật)
