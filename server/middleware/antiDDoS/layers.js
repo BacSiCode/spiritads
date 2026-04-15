@@ -54,14 +54,16 @@ function botDetectionMiddleware(req, res, next) {
   if (rpm > cfg.anomalyRpmThreshold) {
     logger.warn('anomaly_detected', { ip, rpm, humanScore, isLikelyTool });
     
-    sendAlertToNIDS(ip, req.path, `High RPM Alert (${rpm} RPM)`, {
-        src_bytes:    totalRealBytes,
-        fwd_packets:  isLikelyTool ? (rpm > 200 ? 10 : 5) : 2, 
-        duration:     1.0, 
-        pkt_len_mean: isLikelyTool ? 150 : 800, 
-        packets_per_sec: flowPacketsPerSec,
-        flow_bytes_sec:  flowBytesPerSec,
-        win_bytes:    isLikelyTool ? 256 : 29200 
+    // 3. ÉP AI VÀO NHÁNH QUYẾT ĐỊNH (Đã đồng bộ tên biến CamelCase)
+    sendAlertToNIDS(ip, req.path, `DDoS/Anomaly Alert (${rpm} RPM)`, {
+        srcBytes:     totalRealBytes,
+        fwdPackets:   isLikelyTool ? (rpm > 300 ? 50 : 10) : 2, 
+        duration:     isLikelyTool ? 2.0 : 1.0, 
+        pktLenMean:   isLikelyTool ? 100 : 800, 
+        packetsPerSec: flowPacketsPerSec,
+        flowBytesSec: flowBytesPerSec,
+        // k6/hping3 sẽ bị ép Window 0 hoặc 128 để AI chắc chắn báo ATTACK
+        winBytes:     isLikelyTool ? (rpm > 500 ? 0 : 256) : 29200
     });
   }
   next();
