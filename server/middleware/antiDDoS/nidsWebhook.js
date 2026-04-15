@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // Lấy URL từ biến môi trường (Render) hoặc dùng local fallback
-const NIDS_API_URL = process.env.NIDS_WEBHOOK_URL || 'http://192.168.1.29:5000/api/logs';
+const NIDS_API_URL = process.env.NIDS_WEBHOOK_URL || 'http://localhost:5000/api/logs';
 
 async function sendAlertToNIDS(ip, path, description, requestData = {}) {
   // Nếu chưa cấu hình URL thực tế và đang chạy trên server production thì bỏ qua
