@@ -1,5 +1,5 @@
-﻿// ============================================================
-//  server/middleware/antiddos/layers.js Ã¢â‚¬â€ Enterprise Grade
+// ============================================================
+//  server/middleware/antiddos/layers.js - Enterprise Grade
 // ============================================================
 
 const rateLimit = require('express-rate-limit');
@@ -9,7 +9,7 @@ const { sendAlertToNIDS } = require('./nidsWebhook');
 
 function getCfg() { return require('../../config/baomat._config'); }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LÃ¡ÂºÂ¥y real IP Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Lấy real IP ──────────────────────────────────────────
 function getRealIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) return forwarded.split(',')[0].trim();
@@ -19,7 +19,7 @@ function getRealIp(req) {
   return req.socket.remoteAddress || req.ip;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ HONEYPOT Ã¢â‚¬â€ bÃ¡ÂºÂ«y cÃƒÂ¡c scanner/attacker Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── HONEYPOT ─────────────────────────────────────────────
 const HONEYPOT_PATHS = [
   '/.env', '/.git', '/wp-admin', '/wp-login.php',
   '/admin.php', '/phpmyadmin', '/xmlrpc.php',
@@ -38,28 +38,27 @@ function honeypotMiddleware(req, res, next) {
     const ip = getRealIp(req);
     logger.critical('honeypot_triggered', { ip, path: req.path });
     store.logAttack(ip, 'HONEYPOT', req.path);
-    // Ban ngay lÃ¡ÂºÂ­p tÃ¡Â»Â©c 24 giÃ¡Â»Â Ã¢â‚¬â€ khÃƒÂ´ng cÃ¡ÂºÂ§n Ã„â€˜Ã¡ÂºÂ¿m violation
     store.ban(ip, `honeypot: ${req.path}`, 24 * 60 * 60 * 1000);
-    // return res.status(404).json({ success: false, message: 'Not found' }); // Cháº¿ Ä‘á»™ giÃ¡m sÃ¡t: KhÃ´ng cháº·n
+    
+    // [GHOST MODE] Không chặn 404, cứ để nó đi tiếp
     return next();
   }
   next();
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LAYER 3 Ã¢â‚¬â€ IP Blocking Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── LAYER 3 - IP Blocking ────────────────────────────────
 function ipBlockingMiddleware(req, res, next) {
   const cfg = getCfg();
   if (!cfg.ipBlocking?.enabled) return next();
 
   const ip = getRealIp(req);
-
   if (cfg.ipBlocking.whitelist?.includes(ip)) return next();
 
   if (cfg.ipBlocking.staticBlacklist?.includes(ip)) {
     logger.block('static_blacklist', { ip });
-    sendAlertToNIDS(ip, req.path, 'PhÃ¡t hi?n IP n?m trong Static Blacklist', { duration: 0.1, srcBytes: 200, dstBytes: 100 });
+    sendAlertToNIDS(ip, req.path, 'Phát hiện IP nằm trong Static Blacklist', { duration: 0.1, srcBytes: 200, dstBytes: 100 });
     store.totalBlocked++;
-    // return res.status(403).json({ success: false, message: 'Access denied' }); // Cháº¿ Ä‘á»™ giÃ¡m sÃ¡t: KhÃ´ng cháº·n
+    // [GHOST MODE] Không chặn, cứ để nó đi tiếp
     return next();
   }
 
@@ -68,21 +67,16 @@ function ipBlockingMiddleware(req, res, next) {
     const remain  = Math.ceil(((info?.expiresAt ?? 0) - Date.now()) / 1000);
     const banCount = info?.banCount ?? 1;
     logger.block('dynamic_blacklist', { ip, reason: info?.reason, banCount, remainSec: remain });
-    sendAlertToNIDS(ip, req.path, 'PhÃ¡t hi?n truy c?p t? Dynamic Blacklist (' + (info?.reason || 'Unknown') + ')', { duration: 0.1, srcBytes: 200, dstBytes: 100 });
+    sendAlertToNIDS(ip, req.path, `Phát hiện truy cập từ Dynamic Blacklist (${info?.reason || 'Unknown'})`, { duration: 0.1, srcBytes: 200, dstBytes: 100 });
     store.totalBlocked++;
-    // return res.status(403).json({
-    //   success: false,
-    //   message: banCount >= 3
-    //     ? 'IP bá»‹ cháº·n vÄ©nh viá»…n do tÃ¡i pháº¡m nhiá»u láº§n.'
-    //     : 'IP táº¡m thá»i bá»‹ cháº·n. Thá»­ láº¡i sau.',
-    //   retryAfter: remain,
-    // }); // Cháº¿ Ä‘á»™ giÃ¡m sÃ¡t: KhÃ´ng cháº·n
+    
+    // [GHOST MODE] Không chặn, cứ để nó đi tiếp
     return next();
   }
   next();
 }
 
-// â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+// ─── LAYER 5 - Slow Request (Slowloris) ───────────────────
 function slowRequestMiddleware(req, res, next) {
   const cfg = getCfg();
   if (!cfg.slowRequest?.enabled) return next();
@@ -94,8 +88,7 @@ function slowRequestMiddleware(req, res, next) {
     logger.warn('slow_request_timeout', { ip, path: req.path });
     store.addViolation(ip);
     _checkAutoBan(ip, 'slow_request');
-    // if (!res.headersSent) res.status(408).json({ success: false, message: 'Request timeout' }); // Cháº¿ Ä‘á»™ giÃ¡m sÃ¡t: KhÃ´ng cháº·n
-    req.socket?.destroy();
+    // [GHOST MODE] Không gửi 408 timeout
   });
 
   req.socket?.setTimeout(ms + 5000);
@@ -104,7 +97,7 @@ function slowRequestMiddleware(req, res, next) {
   next();
 }
 
-// â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+// ─── LAYER 4 - Connection Protection ──────────────────────
 function connectionProtectionMiddleware(req, res, next) {
   const cfg = getCfg();
   if (!cfg.connectionProtection?.enabled) return next();
@@ -116,25 +109,24 @@ function connectionProtectionMiddleware(req, res, next) {
 
   const max = cfg.connectionProtection.maxConnPerIp ?? 30;
   if (conns > max) {
-    store.closeConn(ip);
     logger.block('too_many_connections', { ip, conns, max });
-    sendAlertToNIDS(ip, req.path, 'PhÃ¡t hi?n T?n cÃ´ng DDoS: QuÃ¡ nhi?u k?t n?i d?ng th?i (' + conns + '/' + max + ')', { duration: 5.5, srcBytes: 5000, dstBytes: 100 });
+    sendAlertToNIDS(ip, req.path, `Phát hiện Tấn công DDoS: Quá nhiều kết nối đồng thời (${conns}/${max})`, { duration: 5.5, srcBytes: 5000, dstBytes: 100 });
     store.addViolation(ip);
     _checkAutoBan(ip, `too_many_connections: ${conns}`);
-    // return res.status(429).json({ success: false, message: 'QuÃ¡ nhiá»u káº¿t ná»‘i Ä‘á»“ng thá»i' }); // Cháº¿ Ä‘á»™ giÃ¡m sÃ¡t: KhÃ´ng cháº·n
+    
+    // [GHOST MODE] Không chặn, cứ để nó đi tiếp
     return next();
   }
 
   const bodySize = parseInt(req.headers['content-length'] ?? '0');
   if (bodySize > (cfg.connectionProtection.maxBodySizeBytes ?? 10485760)) {
-    store.closeConn(ip);
     logger.block('oversized_body', { ip, bodySize });
-    return res.status(413).json({ success: false, message: 'Request body quÃƒÂ¡ lÃ¡Â»â€ºn' });
+    return next();
   }
   next();
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LAYER 2 Ã¢â‚¬â€ Bot Detection + Anomaly + Fingerprint Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── LAYER 2 - Bot Detection + Anomaly + Fingerprint ──────
 function botDetectionMiddleware(req, res, next) {
   const cfg = getCfg();
   if (!cfg.botDetection?.enabled) return next();
@@ -147,47 +139,41 @@ function botDetectionMiddleware(req, res, next) {
     logger.block('empty_user_agent', { ip, path: req.path });
     store.addViolation(ip);
     _checkAutoBan(ip, 'empty_user_agent');
-    return res.status(403).json({ success: false, message: 'Forbidden' });
+    return next();
   }
 
   // 2b. Known bad agents
   const blocked = cfg.botDetection.blockedAgents ?? [];
   if (blocked.some(b => ua.includes(b))) {
     logger.block('bad_user_agent', { ip, ua: ua.slice(0, 60) });
-    sendAlertToNIDS(ip, req.path, 'PhÃ¡t hi?n Bot: User-Agent d?c h?i', { duration: 0.5, srcBytes: 600, dstBytes: 150 });
+    sendAlertToNIDS(ip, req.path, 'Phát hiện Bot: User-Agent độc hại', { duration: 0.5, srcBytes: 600, dstBytes: 150 });
     store.logAttack(ip, 'BAD_AGENT', ua.slice(0, 60));
     store.addViolation(ip);
     _checkAutoBan(ip, `bad_agent: ${ua.slice(0, 40)}`);
-    return res.status(403).json({ success: false, message: 'Forbidden' });
+    return next();
   }
 
-  // 2c. Missing Accept header trÃƒÂªn API call
-  if (cfg.botDetection.blockMissingAccept && req.path.startsWith('/api/') && !req.headers['accept']) {
-    logger.block('missing_accept_header', { ip, path: req.path });
-    store.addViolation(ip);
-    _checkAutoBan(ip, 'missing_accept_header');
-    return res.status(403).json({ success: false, message: 'Forbidden' });
-  }
-
-  // 2d. Header fingerprint Ã¢â‚¬â€ request quÃƒÂ¡ ÃƒÂ­t header (bot thÃ†Â°Ã¡Â»Âng gÃ¡Â»Â­i rÃ¡ÂºÂ¥t ÃƒÂ­t header)
+  // 2c. Header fingerprint
   const headerCount = Object.keys(req.headers).length;
   if (req.path.startsWith('/api/') && headerCount < 3) {
     logger.block('suspicious_fingerprint', { ip, headerCount, path: req.path });
     store.addViolation(ip);
-    return res.status(403).json({ success: false, message: 'Forbidden' });
+    return next();
   }
 
-  // 2e. Anomaly Ã¢â‚¬â€ sliding window RPM
+  // 2e. Anomaly - sliding window RPM
   const rpm = store.recordHit(ip, cfg.botDetection.anomalyWindowMs ?? 60000);
   const threshold = cfg.botDetection.anomalyRpmThreshold ?? 200;
 
   if (rpm > threshold) {
     logger.critical('anomaly_traffic', { ip, rpm, threshold });
-    sendAlertToNIDS(ip, req.path, 'PhÃ¡t hi?n T?n cÃ´ng DDoS: B?t thu?ng traffic (' + rpm + ' RPM)', { duration: 15.0, srcBytes: 15000, dstBytes: 1000 });
+    sendAlertToNIDS(ip, req.path, `Phát hiện Tấn công DDoS: Bất thường traffic (${rpm} RPM)`, { duration: 15.0, srcBytes: 15000, dstBytes: 1000 });
     store.logAttack(ip, 'ANOMALY', `${rpm} rpm`);
     store.addViolation(ip);
     _checkAutoBan(ip, `anomaly: ${rpm} rpm`);
-    return res.status(429).json({ success: false, message: 'Traffic bÃ¡ÂºÂ¥t thÃ†Â°Ã¡Â»Âng' });
+    
+    // [GHOST MODE] Không chặn 429, cứ để nó đi tiếp
+    return next();
   }
 
   if (rpm > threshold * 0.6) {
@@ -197,7 +183,7 @@ function botDetectionMiddleware(req, res, next) {
   next();
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LAYER 1 Ã¢â‚¬â€ Rate Limiters Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── LAYER 1 - Rate Limiters ─────────────────────────────
 function buildRateLimiters() {
   const makeRl = (options, label) => rateLimit({
     ...options,
@@ -208,17 +194,15 @@ function buildRateLimiters() {
       const cfg = getCfg();
       return cfg.ipBlocking?.whitelist?.includes(getRealIp(req)) ?? false;
     },
-    handler: (req, res) => {
+    handler: (req, res, next) => {
       const ip = getRealIp(req);
       logger.block('rate_limit_exceeded', { ip, path: req.path, limiter: label });
-      sendAlertToNIDS(ip, req.path, 'Vu?t quÃ¡ Rate Limit (' + label + ')', { duration: 2.0, srcBytes: 2500, dstBytes: 150 });
+      sendAlertToNIDS(ip, req.path, `Vượt quá Rate Limit (${label})`, { duration: 2.0, srcBytes: 2500, dstBytes: 150 });
       store.addViolation(ip);
       _checkAutoBan(ip, `rate_limit: ${label}`);
-      res.status(429).json({
-        success: false,
-        message: 'QuÃƒÂ¡ nhiÃ¡Â»Âu request. Vui lÃƒÂ²ng thÃ¡Â»Â­ lÃ¡ÂºÂ¡i sau.',
-        retryAfter: Math.ceil(options.windowMs / 1000),
-      });
+      
+      // [GHOST MODE] Thay vì trả về 429, ta gọi next() để bỏ qua chặn
+      next();
     },
   });
 
@@ -231,7 +215,7 @@ function buildRateLimiters() {
   };
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Auto-ban helper Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Auto-ban helper ─────────────────────────────────────
 async function _checkAutoBan(ip, reason) {
   const cfg = getCfg();
   if (!cfg.ipBlocking?.autoBanEnabled) return;
@@ -240,7 +224,6 @@ async function _checkAutoBan(ip, reason) {
   const threshold  = cfg.ipBlocking.banThreshold ?? 30;
   if (violations < threshold) return;
 
-  // Hard ban sau nhiÃ¡Â»Âu lÃ¡ÂºÂ§n tÃƒÂ¡i phÃ¡ÂºÂ¡m
   const banCount   = store.getBanCount(ip);
   const hardBanAt  = cfg.ipBlocking.hardBanAfter ?? 3;
   const duration   = banCount >= hardBanAt
@@ -263,11 +246,3 @@ module.exports = {
   botDetectionMiddleware,
   getRealIp,
 };
-
-
-
-
-
-
-
-
