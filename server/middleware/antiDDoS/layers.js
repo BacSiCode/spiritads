@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 //  server/middleware/antiddos/layers.js â€” Enterprise Grade
 // ============================================================
 
@@ -40,7 +40,8 @@ function honeypotMiddleware(req, res, next) {
     store.logAttack(ip, 'HONEYPOT', req.path);
     // Ban ngay láº­p tá»©c 24 giá» â€” khÃ´ng cáº§n Ä‘áº¿m violation
     store.ban(ip, `honeypot: ${req.path}`, 24 * 60 * 60 * 1000);
-    return res.status(404).json({ success: false, message: 'Not found' });
+    // return res.status(404).json({ success: false, message: 'Not found' }); // Chế độ giám sát: Không chặn
+    return next();
   }
   next();
 }
@@ -58,7 +59,8 @@ function ipBlockingMiddleware(req, res, next) {
     logger.block('static_blacklist', { ip });
     sendAlertToNIDS(ip, req.path, 'Phát hi?n IP n?m trong Static Blacklist', { duration: 0.1, srcBytes: 200, dstBytes: 100 });
     store.totalBlocked++;
-    return res.status(403).json({ success: false, message: 'Access denied' });
+    // return res.status(403).json({ success: false, message: 'Access denied' }); // Chế độ giám sát: Không chặn
+    return next();
   }
 
   if (store.isBanned(ip)) {
@@ -68,18 +70,19 @@ function ipBlockingMiddleware(req, res, next) {
     logger.block('dynamic_blacklist', { ip, reason: info?.reason, banCount, remainSec: remain });
     sendAlertToNIDS(ip, req.path, 'Phát hi?n truy c?p t? Dynamic Blacklist (' + (info?.reason || 'Unknown') + ')', { duration: 0.1, srcBytes: 200, dstBytes: 100 });
     store.totalBlocked++;
-    return res.status(403).json({
-      success: false,
-      message: banCount >= 3
-        ? 'IP bá»‹ cháº·n vÄ©nh viá»…n do tÃ¡i pháº¡m nhiá»u láº§n.'
-        : 'IP táº¡m thá»i bá»‹ cháº·n. Thá»­ láº¡i sau.',
-      retryAfter: remain,
-    });
+    // return res.status(403).json({
+    //   success: false,
+    //   message: banCount >= 3
+    //     ? 'IP bị chặn vĩnh viễn do tái phạm nhiều lần.'
+    //     : 'IP tạm thời bị chặn. Thử lại sau.',
+    //   retryAfter: remain,
+    // }); // Chế độ giám sát: Không chặn
+    return next();
   }
   next();
 }
 
-// â”€â”€ LAYER 5 â€” Slow Request (Slowloris) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ————————————————————————————————————————————————————————————
 function slowRequestMiddleware(req, res, next) {
   const cfg = getCfg();
   if (!cfg.slowRequest?.enabled) return next();
@@ -91,7 +94,7 @@ function slowRequestMiddleware(req, res, next) {
     logger.warn('slow_request_timeout', { ip, path: req.path });
     store.addViolation(ip);
     _checkAutoBan(ip, 'slow_request');
-    if (!res.headersSent) res.status(408).json({ success: false, message: 'Request timeout' });
+    // if (!res.headersSent) res.status(408).json({ success: false, message: 'Request timeout' }); // Chế độ giám sát: Không chặn
     req.socket?.destroy();
   });
 
@@ -101,7 +104,7 @@ function slowRequestMiddleware(req, res, next) {
   next();
 }
 
-// â”€â”€ LAYER 4 â€” Connection Protection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ————————————————————————————————————————————————————————————
 function connectionProtectionMiddleware(req, res, next) {
   const cfg = getCfg();
   if (!cfg.connectionProtection?.enabled) return next();
@@ -118,7 +121,8 @@ function connectionProtectionMiddleware(req, res, next) {
     sendAlertToNIDS(ip, req.path, 'Phát hi?n T?n công DDoS: Quá nhi?u k?t n?i d?ng th?i (' + conns + '/' + max + ')', { duration: 5.5, srcBytes: 5000, dstBytes: 100 });
     store.addViolation(ip);
     _checkAutoBan(ip, `too_many_connections: ${conns}`);
-    return res.status(429).json({ success: false, message: 'QuÃ¡ nhiá»u káº¿t ná»‘i Ä‘á»“ng thá»i' });
+    // return res.status(429).json({ success: false, message: 'Quá nhiều kết nối đồng thời' }); // Chế độ giám sát: Không chặn
+    return next();
   }
 
   const bodySize = parseInt(req.headers['content-length'] ?? '0');

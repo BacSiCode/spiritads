@@ -37,7 +37,7 @@ module.exports = {
     botDetection: {
       enabled: true,            // Vẫn để True để nó BÁO CÁO về NIDS cho bạn xem
       blockMissingAccept: false,
-      anomalyRpmThreshold: 100000, // Đẩy lên 100,000 RPM (Bạn F5 gãy tay cũng không bao giờ hiện lỗi nữa)
+      anomalyRpmThreshold: 30,     // Hạ xuống 30 để bạn F5 vài cái là Dashboard hiện ngay
       anomalyWindowMs: 60000,
       blockedAgents: []         // Không chặn bất kỳ Agent nào
     },
