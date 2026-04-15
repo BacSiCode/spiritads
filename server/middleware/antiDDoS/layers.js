@@ -26,9 +26,10 @@ function trafficSamplerMiddleware(req, res, next) {
     if (Math.random() < 0.05) {
         sendAlertToNIDS(ip, req.path, 'Normal Traffic Sample', {
             status: 'NORMAL',
-            srcBytes: Math.floor(Math.random() * 500) + 200,
+            srcBytes: Math.floor(Math.random() * 100) + 150, // 150 - 250 bytes (Benign)
             fwdPackets: 1,
-            bwdPackets: 1
+            bwdPackets: 1,
+            pktLenMean: 50 // Benign packet size
         });
     }
     next();
