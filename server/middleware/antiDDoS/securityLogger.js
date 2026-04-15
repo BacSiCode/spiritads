@@ -2,6 +2,7 @@
 //  server/middleware/antiddos/securityLogger.js 
 // ============================================================
 
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
@@ -15,6 +16,31 @@ if (!fs.existsSync(logDir)) {
 
 const logFile = path.join(logDir, 'security.log');
 
+async function sendTelegramAlert(level, type, data) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+
+    if (!token || !chatId) return;
+
+    const message = `🛡️ *[SPIRITADS SECURITY]*\n` +
+                    `⚠️ *Level:* ${level}\n` +
+                    `🔥 *Type:* ${type}\n` +
+                    `🌐 *IP:* ${data.ip || 'Unknown'}\n` +
+                    `📍 *Path:* ${data.path || '/'}\n` +
+                    `📝 *Detail:* ${JSON.stringify(data)}\n` +
+                    `⏰ *Time:* ${new Date().toLocaleString('vi-VN')}`;
+
+    try {
+        await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'Markdown'
+        });
+    } catch (error) {
+        console.error('[Telegram Alert Failed]', error.message);
+    }
+}
+
 function writeLog(level, type, data) {
     const logEntry = {
         timestamp: new Date().toISOString(),
@@ -25,11 +51,16 @@ function writeLog(level, type, data) {
     
     const line = JSON.stringify(logEntry) + '\n';
     
-    // In ra console để theo dõi trên Render logs
+    // In ra console 
     const color = level === 'CRITICAL' ? '\x1b[31m' : level === 'BLOCK' ? '\x1b[33m' : '\x1b[36m';
     console.log(`${color}[SECURITY][${level}] ${type}\x1b[0m`, data);
 
-    // Ghi vào file (tùy chọn, Render thường dùng stdout)
+    // Tự động báo về Telegram nếu là cảnh báo quan trọng
+    if (level === 'CRITICAL' || level === 'BLOCK') {
+        sendTelegramAlert(level, type, data);
+    }
+
+    // Ghi vào file 
     try {
         fs.appendFileSync(logFile, line);
     } catch(e) {}
@@ -44,10 +75,10 @@ const logger = {
     // Cloudflare integration placeholder
     async autoBlockCloudflare(ip, reason) {
         if (!process.env.CF_ZONE_ID || !process.env.CF_API_KEY) {
-            // console.log(`[CF] Cloudflare credentials not set. Skipping block for ${ip}`);
             return;
         }
         // Logic thực tế gọi API Cloudflare sẽ ở đây
+        sendTelegramAlert('CLOUDFARE', 'AUTO_BLOCK', { ip, reason });
     }
 };
 
