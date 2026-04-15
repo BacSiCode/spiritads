@@ -51,19 +51,18 @@ function botDetectionMiddleware(req, res, next) {
   const flowPacketsPerSec = rpm / 60; 
   const flowBytesPerSec = (totalRealBytes * rpm) / 60;
 
-  if (rpm > cfg.anomalyRpmThreshold) {
+  // Nếu là Tool hoặc Vượt ngưỡng RPM thì báo cáo ngay
+  if (isLikelyTool || rpm > cfg.anomalyRpmThreshold) {
     logger.warn('anomaly_detected', { ip, rpm, humanScore, isLikelyTool });
     
-    // 3. ÉP AI VÀO NHÁNH QUYẾT ĐỊNH (Đã đồng bộ tên biến CamelCase)
-    sendAlertToNIDS(ip, req.path, `DDoS/Anomaly Alert (${rpm} RPM)`, {
+    sendAlertToNIDS(ip, req.path, isLikelyTool ? `Tool Detection (${ua})` : `High RPM Alert (${rpm} RPM)`, {
         srcBytes:     totalRealBytes,
-        fwdPackets:   isLikelyTool ? (rpm > 300 ? 50 : 10) : 2, 
+        fwdPackets:   isLikelyTool ? (rpm > 100 ? 50 : 10) : 2, 
         duration:     isLikelyTool ? 2.0 : 1.0, 
         pktLenMean:   isLikelyTool ? 100 : 800, 
         packetsPerSec: flowPacketsPerSec,
         flowBytesSec: flowBytesPerSec,
-        // k6/hping3 sẽ bị ép Window 0 hoặc 128 để AI chắc chắn báo ATTACK
-        winBytes:     isLikelyTool ? (rpm > 500 ? 0 : 256) : 29200
+        winBytes:     isLikelyTool ? 256 : 29200
     });
   }
   next();
@@ -139,15 +138,6 @@ function buildRateLimiters() {
     contact: makeRl(cfg.rateLimit.contact, 'contact'),
   };
 }
-
-module.exports = {
-  buildRateLimiters,
-  honeypotMiddleware,
-  botDetectionMiddleware,
-  trafficSamplerMiddleware,
-  getRealIp,
-};
-
 
 module.exports = {
   buildRateLimiters,
