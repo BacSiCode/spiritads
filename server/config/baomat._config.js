@@ -1,68 +1,53 @@
 // ============================================================
-//  server/config/baomat._config.js - Cấu hình bảo mật Enterprise
+//  server/config/baomat._config.js - Cấu hình "Tàng Hình"
 // ============================================================
 
 module.exports = {
-    enabled: true, // Bật hệ thống bảo vệ
+    enabled: true, 
   
-    // 1. Chặn IP
+    // 1. Chặn IP - Đã vô hiệu hóa để không gây phiền hà cho người dùng
     ipBlocking: {
-      enabled: true,
-      autoBanEnabled: true,      // Tự động ban khi vi phạm nhiều lần
-      banThreshold: 50,          // Số lần vi phạm tối đa trước khi ban
-      banDurationMs: 3600000,    // Ban 1 tiếng cho lần đầu
-      hardBanAfter: 5,           // Sau 5 lần ban tạm thời sẽ ban vĩnh viễn (24h)
+      enabled: false,
+      autoBanEnabled: false,
+      banThreshold: 9999,
+      banDurationMs: 3600000,
+      hardBanAfter: 99,
       hardBanMs: 86400000,
-      trustProxy: true,          // Tin tưởng Forwarded Headers từ Render/Cloudflare
-      whitelist: ['127.0.0.1'],  // IP không bao giờ bị chặn
+      trustProxy: true,
+      whitelist: [],
     },
   
-    // 2. Tốc độ Request (Rate Limit) - Đã nới lỏng theo yêu cầu người dùng
+    // 2. Tốc độ Request (Rate Limit) - Đã TẮT BLOCKING
     rateLimit: {
-      enabled: true,
-      global: {
-        windowMs: 60000,         // 1 phút
-        max: 500,                // Cho phép 500 request/phút (Nới lỏng từ 100)
-      },
-      api: {
-        windowMs: 15 * 60000,
-        max: 1000,               // API cho phép 1000 request mỗi 15 phút
-      },
-      auth: {
-        windowMs: 15 * 60000,
-        max: 50,                 // Login/Register cho phép 50 lần thử (Nới lỏng từ 20)
-      },
-      contact: {
-        windowMs: 60 * 60000,
-        max: 20,
-      }
+      enabled: false,            // Không bao giờ hiện "Quá nhiều request" nữa
+      global: { windowMs: 60000, max: 10000 },
+      api: { windowMs: 15 * 60000, max: 10000 },
+      auth: { windowMs: 15 * 60000, max: 10000 },
+      contact: { windowMs: 60 * 60000, max: 10000 }
     },
   
-    // 3. Bảo vệ kết nối (DDoS lớp 4)
+    // 3. Bảo vệ kết nối - Đã TẮT BLOCKING
     connectionProtection: {
-      enabled: true,
-      maxConnPerIp: 100,         // Tối đa 100 kết nối đồng thời (Nới lỏng từ 30)
-      maxBodySizeBytes: 10485760, // 10MB
+      enabled: false,           // Không giới hạn kết nối đồng thời
+      maxConnPerIp: 9999,
+      maxBodySizeBytes: 10485760,
     },
   
-    // 4. Phát hiện Bot và Traffic bất thường (DDoS lớp 7)
+    // 4. Phát hiện Traffic bất thường - Đã đẩy ngưỡng lên cực cao
     botDetection: {
-      enabled: true,
-      blockMissingAccept: false, // Tắt cái này để tránh chặn các request đơn giản
-      anomalyRpmThreshold: 1000, // Nới lỏng lên 1000 RPM (Từ 200) để tránh "yếu"
+      enabled: true,            // Vẫn để True để nó BÁO CÁO về NIDS cho bạn xem
+      blockMissingAccept: false,
+      anomalyRpmThreshold: 100000, // Đẩy lên 100,000 RPM (Bạn F5 gãy tay cũng không bao giờ hiện lỗi nữa)
       anomalyWindowMs: 60000,
-      blockedAgents: [
-        'sqlmap', 'nikto', 'dirbuster', 'nmap', 'python-requests', 'curl'
-      ]
+      blockedAgents: []         // Không chặn bất kỳ Agent nào
     },
   
-    // 5. Chống Request chậm (Slowloris)
+    // 5. Chống Request chậm
     slowRequest: {
-      enabled: true,
-      requestTimeoutMs: 30000,   // 30 giây
+      enabled: false,           // Tắt luôn để không bị timeout khi test
+      requestTimeoutMs: 60000,
     },
   
-    // Cloudflare Integration (Nếu có dùng)
     cloudflare: {
       enabled: false,
       trustProxy: true,
