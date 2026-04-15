@@ -5,10 +5,10 @@
 module.exports = {
     enabled: true, 
   
-    // 1. Chặn IP - Đã vô hiệu hóa để không gây phiền hà cho người dùng
+    // 1. Chặn IP - Đã kích hoạt để bảo vệ server khỏi DDoS
     ipBlocking: {
-      enabled: false,
-      autoBanEnabled: false,
+      enabled: true,
+      autoBanEnabled: true,
       banThreshold: 9999,
       banDurationMs: 3600000,
       hardBanAfter: 99,
@@ -37,7 +37,7 @@ module.exports = {
     botDetection: {
       enabled: true,            // Vẫn để True để nó BÁO CÁO về NIDS cho bạn xem
       blockMissingAccept: false,
-      anomalyRpmThreshold: 5,     // Hạ xuống 5 để bạn F5 vài cái là Dashboard hiện ngay
+      anomalyRpmThreshold: 100,    // Hạ xuống 100 để "bắt" k6 và các tool tấn công sớm hơn
       anomalyWindowMs: 60000,
       blockedAgents: []         // Không chặn bất kỳ Agent nào
     },

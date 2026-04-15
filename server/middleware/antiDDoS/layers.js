@@ -19,51 +19,21 @@ function getRealIp(req) {
   return req.socket.remoteAddress || req.ip;
 }
 
-// ─── Lớp 5: Bot & Anomaly Detection (AI SENSOR UPGRADED - VERSION 4) ──
-// ─── Lớp 5: Bot & Anomaly Detection (AGGRESSIVE MODE - FOR DEMO) ──
-function botDetectionMiddleware(req, res, next) {
-  const ip = getRealIp(req);
-  const rpm = store.recordHit(ip, 60000);
-  const cfg = getCfg().botDetection;
-
-  // Bản này KHÔNG lọc file tĩnh và KHÔNG phân biệt người dùng
-  // Mục tiêu: Báo DDoS ngay khi nhấn F5 nhanh
-  if (rpm > cfg.anomalyRpmThreshold) {
-    logger.warn('aggressive_anomaly_detected', { ip, rpm });
-    
-    // Gửi thông số ép AI phải ra nhãn DDoS (Đỏ)
-    sendAlertToNIDS(ip, req.path, `High Intensity Traffic (${rpm} RPM)`, {
-        srcBytes:     rpm * 100, // Ép dung lượng tăng cực mạnh theo RPM
-        fwdPackets:   Math.floor(rpm / 2), // Ép số gói tin tăng cao
-        duration:     5.0, 
-        pktLenMean:   400, 
-        winBytes:     8192, // Window size tiêu chuẩn nhưng kết hợp RPM cao sẽ ra DDoS
-        synCount:     rpm > 50 ? 1 : 0
-    });
-  }
-  next();
-}
-
-
-// ─── TRAFFIC SAMPLER (Gửi mẫu traffic về NIDS - Tăng độ nhạy) ──────
+// ─── TRAFFIC SAMPLER (Gửi mẫu traffic thường về NIDS) ──────
 function trafficSamplerMiddleware(req, res, next) {
     const ip = getRealIp(req);
-    const headerSize = JSON.stringify(req.headers).length;
-
-    // Tăng tỷ lệ lấy mẫu lên 30% để Dashboard luôn có dữ liệu nhảy
-    if (Math.random() < 0.3) {
+    // Chỉ gửi mẫu ngẫu nhiên 5% traffic sạch để Dashboard có màu xanh
+    if (Math.random() < 0.05) {
         sendAlertToNIDS(ip, req.path, 'Normal Traffic Sample', {
             status: 'NORMAL',
-            srcBytes: headerSize + 50, 
-            fwdPackets: 2,
+            srcBytes: 60,   // Benign signature
+            fwdPackets: 1,
             bwdPackets: 1,
-            pktLenMean: 800, 
-            winBytes: 29200  
+            pktLenMean: 6   // Benign signature from dataset
         });
     }
     next();
 }
-
 
 // ─── HONEYPOT ─────────────────────────────────────────────
 function honeypotMiddleware(req, res, next) {
@@ -79,9 +49,63 @@ function honeypotMiddleware(req, res, next) {
     store.logAttack(ip, 'HONEYPOT', req.path);
     store.ban(ip, `honeypot: ${req.path}`, 24 * 60 * 60 * 1000);
     
+    // Gửi về NIDS với nhãn gán sẵn là ATTACK vì đây là bẫy
     sendAlertToNIDS(ip, req.path, 'Honeypot Triggered', { status: 'ATTACK_DETECTED', srcBytes: 1500 });
     return next();
   }
+  next();
+}
+
+// ─── LAYER 0 - IP Blocking (IPS) ──────────────────────────
+function ipBlockingMiddleware(req, res, next) {
+  const ip = getRealIp(req);
+  if (store.isBanned(ip)) {
+    const info = store.getBanInfo(ip);
+    return res.status(403).json({
+      success: false,
+      message: 'Access Denied: Security Threat Detected',
+      reason: info?.reason || 'Suspicious Activity',
+      retryAfter: '1h'
+    });
+  }
+  next();
+}
+
+// ─── LAYER 2 - Bot Detection / Anomaly (AI FEEDER/IPS) ────
+async function botDetectionMiddleware(req, res, next) {
+  const cfg = getCfg();
+  if (!cfg.botDetection?.enabled) return next();
+
+  const ip = getRealIp(req);
+  const rpm = store.recordHit(ip, cfg.botDetection.anomalyWindowMs || 60000);
+  const threshold = cfg.botDetection.anomalyRpmThreshold || 100;
+
+  // Nếu RPM vượt ngưỡng, gửi dữ liệu "nghi vấn" về cho AI thẩm định
+  if (rpm > threshold) {
+    logger.warn('anomaly_detected', { ip, rpm });
+    
+    // Gửi DATA thô về với các đặc trưng "đậm đặc" để AI nhận diện tấn công (k6)
+    const aiResult = await sendAlertToNIDS(ip, req.path, `Suspicious Traffic (${rpm} RPM)`, {
+        srcBytes:     rpm * 500,  
+        fwdPackets:   rpm,
+        pktLenMean:   1000,      // Ép thông số cao để AI dự đoán DDoS
+        avg_pkt_size: 1000,
+        packets_per_sec: rpm / 60
+    });
+
+    // Nếu AI xác nhận là DDoS -> THỰC THI LỆNH CHẶN (IPS)
+    if (aiResult && aiResult.status === 'DDoS') {
+      logger.critical('ips_active_blocking', { ip, rpm, status: aiResult.status });
+      store.ban(ip, 'DDoS Attack (AI Detected)', 60 * 60 * 1000); // Khóa 1 tiếng
+      store.logAttack(ip, 'DDOS', `AI Confirmed DDoS with ${rpm} RPM`);
+      
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Hệ thống đã chặn IP của bạn do phát hiện dấu hiệu tấn công DDoS.' 
+      });
+    }
+  }
+
   next();
 }
 
@@ -95,10 +119,11 @@ function buildRateLimiters() {
       const ip = getRealIp(req);
       logger.block('rate_limit_exceeded', { ip, path: req.path, limiter: label });
       
+      // Gửi dữ liệu về AI để báo cáo, nhưng không chặn trình duyệt
       sendAlertToNIDS(ip, req.path, `Rate Limit Exceeded (${label})`, {
           srcBytes: 3000, 
           fwdPackets: 20,
-          status: 'BENIGN' 
+          status: 'NORMAL' // Mặc định là Normal, AI sẽ phân tích xem có phải DDoS thật không
       });
       next(); 
     },
@@ -116,6 +141,7 @@ function buildRateLimiters() {
 module.exports = {
   buildRateLimiters,
   honeypotMiddleware,
+  ipBlockingMiddleware,
   botDetectionMiddleware,
   trafficSamplerMiddleware,
   getRealIp,
