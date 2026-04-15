@@ -68,17 +68,13 @@ function botDetectionMiddleware(req, res, next) {
   next();
 }
 
-// ─── TRAFFIC SAMPLER (Gửi mẫu traffic thật về NIDS) ──────────────
+// ─── TRAFFIC SAMPLER (Gửi mẫu traffic về NIDS - Tăng độ nhạy) ──────
 function trafficSamplerMiddleware(req, res, next) {
-    const path = req.path.toLowerCase();
-    if (path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|otf)$/)) {
-        return next();
-    }
-
     const ip = getRealIp(req);
     const headerSize = JSON.stringify(req.headers).length;
 
-    if (Math.random() < 0.05) {
+    // Tăng tỷ lệ lấy mẫu lên 30% để Dashboard luôn có dữ liệu nhảy
+    if (Math.random() < 0.3) {
         sendAlertToNIDS(ip, req.path, 'Normal Traffic Sample', {
             status: 'NORMAL',
             srcBytes: headerSize + 50, 
@@ -90,6 +86,7 @@ function trafficSamplerMiddleware(req, res, next) {
     }
     next();
 }
+
 
 // ─── HONEYPOT ─────────────────────────────────────────────
 function honeypotMiddleware(req, res, next) {
