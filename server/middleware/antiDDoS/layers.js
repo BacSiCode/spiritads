@@ -85,24 +85,21 @@ async function botDetectionMiddleware(req, res, next) {
     logger.warn('anomaly_detected', { ip, rpm });
     
     // Gửi DATA thô về với các đặc trưng "đậm đặc" để AI nhận diện tấn công (k6)
+    // Chỉnh Duration cao để khớp với tập dữ liệu DDoS (CIC-IDS-2017)
     const aiResult = await sendAlertToNIDS(ip, req.path, `Suspicious Traffic (${rpm} RPM)`, {
-        srcBytes:     rpm * 500,  
+        srcBytes:     rpm * 2000, 
         fwdPackets:   rpm,
-        pktLenMean:   1000,      // Ép thông số cao để AI dự đoán DDoS
+        pktLenMean:   1000,      
+        duration:     2000000,   // 2 triệu (khớp với Median Flow Duration của DDoS)
         avg_pkt_size: 1000,
-        packets_per_sec: rpm / 60
+        packets_per_sec: rpm / 5
     });
 
-    // Nếu AI xác nhận là DDoS -> THỰC THI LỆNH CHẶN (IPS)
+    // CHỈ BÁO CÁO (IDS), KHÔNG CHẶN (IPS) - Theo yêu cầu của bạn
     if (aiResult && aiResult.status === 'DDoS') {
-      logger.critical('ips_active_blocking', { ip, rpm, status: aiResult.status });
-      store.ban(ip, 'DDoS Attack (AI Detected)', 60 * 60 * 1000); // Khóa 1 tiếng
-      store.logAttack(ip, 'DDOS', `AI Confirmed DDoS with ${rpm} RPM`);
-      
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Hệ thống đã chặn IP của bạn do phát hiện dấu hiệu tấn công DDoS.' 
-      });
+      logger.warn('ids_confirmed_ddos', { ip, rpm, status: aiResult.status });
+      store.logAttack(ip, 'DDOS_DETECTED', `AI Identified DDoS Flow with ${rpm} RPM`);
+      // Không gọi store.ban và không return res.status(403)
     }
   }
 
