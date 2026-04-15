@@ -22,19 +22,19 @@ async function sendTelegramAlert(level, type, data) {
 
     if (!token || !chatId) return;
 
-    const message = `🛡️ *[SPIRITADS SECURITY]*\n` +
-                    `⚠️ *Level:* ${level}\n` +
-                    `🔥 *Type:* ${type}\n` +
-                    `🌐 *IP:* ${data.ip || 'Unknown'}\n` +
-                    `📍 *Path:* ${data.path || '/'}\n` +
-                    `📝 *Detail:* ${JSON.stringify(data)}\n` +
-                    `⏰ *Time:* ${new Date().toLocaleString('vi-VN')}`;
+    const message = `🛡 <b>[SPIRITADS SECURITY]</b>\n` +
+                    `⚠️ <b>Level:</b> ${level}\n` +
+                    `🔥 <b>Type:</b> ${type}\n` +
+                    `🌐 <b>IP:</b> ${data.ip || 'Unknown'}\n` +
+                    `📍 <b>Path:</b> ${data.path || '/'}\n` +
+                    `📝 <b>Detail:</b> <pre>${JSON.stringify(data, null, 2)}</pre>\n` +
+                    `⏰ <b>Time:</b> ${new Date().toLocaleString('vi-VN')}`;
 
     try {
         await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
             chat_id: chatId,
             text: message,
-            parse_mode: 'Markdown'
+            parse_mode: 'HTML'
         });
     } catch (error) {
         console.error('[Telegram Alert Failed]', error.message);
