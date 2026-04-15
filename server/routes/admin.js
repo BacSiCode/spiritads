@@ -9,7 +9,7 @@ const { protect, authorize } = require('../middleware/auth');
 
 // Require Notification model (optional - won't crash if missing)
 let Notification;
-try { Notification = require('../models/Notification'); } catch (e) {}
+
 
 router.use(protect, authorize('admin'));
 
