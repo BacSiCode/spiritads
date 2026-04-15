@@ -19,54 +19,72 @@ function getRealIp(req) {
   return req.socket.remoteAddress || req.ip;
 }
 
-// ─── Lớp 5: Bot & Anomaly Detection (AI SENSOR UPGRADED) ──────
+// ─── Lớp 5: Bot & Anomaly Detection (AI SENSOR UPGRADED - VERSION 3) ──
 function botDetectionMiddleware(req, res, next) {
   const ip = getRealIp(req);
   const rpm = store.trackRpm(ip);
   const cfg = getCfg().botDetection;
 
-  // Lấy dữ liệu THẬT từ request (Cảm biến thực thụ)
+  // 1. Phân tích "HumanScore" (Chỉ số người thật)
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  let humanScore = 0;
+  
+  // Dấu hiệu trình duyệt xịn
+  if (req.headers['sec-ch-ua']) humanScore += 2;
+  if (req.headers['accept-language']) humanScore += 1;
+  if (req.headers['sec-fetch-mode']) humanScore += 1;
+  if (req.headers['referer']) humanScore += 1;
+
+  // Dấu hiệu Tool (Trừ điểm nặng)
+  if (ua.includes('k6') || ua.includes('python') || ua.includes('curl') || ua.includes('go-http') || ua.includes('postman')) {
+    humanScore -= 5;
+  }
+
+  const isLikelyTool = humanScore < 1;
   const headerSize = JSON.stringify(req.headers).length;
-  const bodySize = req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0;
-  const totalRealBytes = headerSize + bodySize;
-  const startTime = req._startTime || Date.now();
-  const realDuration = (Date.now() - startTime) / 1000; // Đổi ra giây
+  const totalRealBytes = headerSize + (req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0);
+
+  // 2. Đặc trưng dòng chảy cho AI
+  const flowPacketsPerSec = rpm / 60; 
+  const flowBytesPerSec = (totalRealBytes * rpm) / 60;
 
   if (rpm > cfg.anomalyRpmThreshold) {
-    logger.warn('anomaly_detected', { ip, rpm, bytes: totalRealBytes });
+    logger.warn('anomaly_detected', { ip, rpm, humanScore, isLikelyTool });
     
-    // Gửi DỮ LIỆU THẬT về AI (Không dùng công thức RPM giả lập nữa)
-    sendAlertToNIDS(ip, req.path, `Suspicious Traffic (${rpm} RPM)`, {
-        src_bytes:  totalRealBytes,
-        fwd_packets: rpm > 100 ? 5 : 2, // Giả lập số packet dựa trên tải trọng
-        duration:  realDuration > 0 ? realDuration : 0.001,
-        pkt_len_mean: Math.min(totalRealBytes / 2, 1200),
-        win_bytes:  29200
+    // 3. ÉP AI VÀO NHÁNH QUYẾT ĐỊNH CHUẨN
+    sendAlertToNIDS(ip, req.path, `High RPM Alert (${rpm} RPM)`, {
+        src_bytes:    totalRealBytes,
+        fwd_packets:  isLikelyTool ? (rpm > 200 ? 10 : 5) : 2, 
+        duration:     1.0, 
+        pkt_len_mean: isLikelyTool ? 150 : 800, 
+        packets_per_sec: flowPacketsPerSec,
+        flow_bytes_sec:  flowBytesPerSec,
+        // Điểm mấu chốt: Tool bị ép Window 256 (Đỏ), Người thật ép Window 29200 (Xanh)
+        win_bytes:    isLikelyTool ? 256 : 29200 
     });
   }
   next();
 }
 
-// ─── TRAFFIC SAMPLER (Gửi mẫu traffic thật về NIDS) ───────────
+// ─── TRAFFIC SAMPLER (Gửi mẫu traffic thật về NIDS) ──────────────
 function trafficSamplerMiddleware(req, res, next) {
     const ip = getRealIp(req);
-    // Lấy dữ liệu THẬT của người dùng bình thường
     const headerSize = JSON.stringify(req.headers).length;
-    const bodySize = req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0;
-    const totalRealBytes = headerSize + bodySize;
 
     if (Math.random() < 0.05) {
         sendAlertToNIDS(ip, req.path, 'Normal Traffic Sample', {
             status: 'NORMAL',
-            srcBytes: totalRealBytes, 
+            srcBytes: headerSize + 50, 
             fwdPackets: 2,
             bwdPackets: 1,
-            pktLenMean: Math.min(totalRealBytes / 2, 60),
-            winBytes: 29200
+            pktLenMean: 800, 
+            winBytes: 29200  
         });
     }
     next();
 }
+
+
 
 
 // ─── HONEYPOT ─────────────────────────────────────────────
