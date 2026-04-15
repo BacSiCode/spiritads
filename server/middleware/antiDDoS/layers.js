@@ -26,10 +26,11 @@ function trafficSamplerMiddleware(req, res, next) {
     if (Math.random() < 0.05) {
         sendAlertToNIDS(ip, req.path, 'Normal Traffic Sample', {
             status: 'NORMAL',
-            srcBytes: 60,   // Benign signature
-            fwdPackets: 1,
+            srcBytes: 60,
+            fwdPackets: 2,   // More than 1.5 to trigger Benign branch
             bwdPackets: 1,
-            pktLenMean: 6   // Benign signature from dataset
+            pktLenMean: 6,
+            winBytes: 29200  // Common Linux window size, triggers Benign branch
         });
     }
     next();
