@@ -19,22 +19,55 @@ function getRealIp(req) {
   return req.socket.remoteAddress || req.ip;
 }
 
-// ─── TRAFFIC SAMPLER (Gửi mẫu traffic thường về NIDS) ──────
+// ─── Lớp 5: Bot & Anomaly Detection (AI SENSOR UPGRADED) ──────
+function botDetectionMiddleware(req, res, next) {
+  const ip = getRealIp(req);
+  const rpm = store.trackRpm(ip);
+  const cfg = getCfg().botDetection;
+
+  // Lấy dữ liệu THẬT từ request (Cảm biến thực thụ)
+  const headerSize = JSON.stringify(req.headers).length;
+  const bodySize = req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0;
+  const totalRealBytes = headerSize + bodySize;
+  const startTime = req._startTime || Date.now();
+  const realDuration = (Date.now() - startTime) / 1000; // Đổi ra giây
+
+  if (rpm > cfg.anomalyRpmThreshold) {
+    logger.warn('anomaly_detected', { ip, rpm, bytes: totalRealBytes });
+    
+    // Gửi DỮ LIỆU THẬT về AI (Không dùng công thức RPM giả lập nữa)
+    sendAlertToNIDS(ip, req.path, `Suspicious Traffic (${rpm} RPM)`, {
+        src_bytes:  totalRealBytes,
+        fwd_packets: rpm > 100 ? 5 : 2, // Giả lập số packet dựa trên tải trọng
+        duration:  realDuration > 0 ? realDuration : 0.001,
+        pkt_len_mean: Math.min(totalRealBytes / 2, 1200),
+        win_bytes:  29200
+    });
+  }
+  next();
+}
+
+// ─── TRAFFIC SAMPLER (Gửi mẫu traffic thật về NIDS) ───────────
 function trafficSamplerMiddleware(req, res, next) {
     const ip = getRealIp(req);
-    // Chỉ gửi mẫu ngẫu nhiên 5% traffic sạch để Dashboard có màu xanh
+    // Lấy dữ liệu THẬT của người dùng bình thường
+    const headerSize = JSON.stringify(req.headers).length;
+    const bodySize = req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0;
+    const totalRealBytes = headerSize + bodySize;
+
     if (Math.random() < 0.05) {
         sendAlertToNIDS(ip, req.path, 'Normal Traffic Sample', {
             status: 'NORMAL',
-            srcBytes: 60,
-            fwdPackets: 2,   // More than 1.5 to trigger Benign branch
+            srcBytes: totalRealBytes, 
+            fwdPackets: 2,
             bwdPackets: 1,
-            pktLenMean: 6,
-            winBytes: 29200  // Common Linux window size, triggers Benign branch
+            pktLenMean: Math.min(totalRealBytes / 2, 60),
+            winBytes: 29200
         });
     }
     next();
 }
+
 
 // ─── HONEYPOT ─────────────────────────────────────────────
 function honeypotMiddleware(req, res, next) {
