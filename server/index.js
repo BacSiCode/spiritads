@@ -19,31 +19,8 @@ const app = express();
 app.set('trust proxy', true);
 
 // ─── Traffic Monitor ──────────────────────────────────────────
-const trafficLog = {
-  totalRequests: 0,
-  requestsPerMinute: {},
-  ipTracker: {},
-  recentRequests: [],
-  startTime: new Date(),
-};
+// (Đã chuyển sang bộ lọc Anti-DDoS nâng cao có kết nối NIDS)
 
-app.use((req, res, next) => {
-  const ip =
-  req.headers['x-forwarded-for']?.split(',')[0] ||
-  req.socket.remoteAddress ||
-  req.ip;
-  const now = new Date();
-  const minute = now.toISOString().slice(0, 16);
-  trafficLog.totalRequests++;
-  trafficLog.requestsPerMinute[minute] = (trafficLog.requestsPerMinute[minute] || 0) + 1;
-  trafficLog.ipTracker[ip] = (trafficLog.ipTracker[ip] || 0) + 1;
-  trafficLog.recentRequests.push({ ip, time: now, method: req.method, path: req.path, ua: req.headers['user-agent']?.slice(0, 80) });
-  if (trafficLog.recentRequests.length > 200) trafficLog.recentRequests.shift();
-  const c = trafficLog.ipTracker[ip];
-  if (c === 50)  console.log(`⚠️  WARNING: ${ip} – ${c} requests`);
-  if (c === 200) console.log(`🚨 DDOS ALERT: ${ip} – ${c} requests!`);
-  next();
-});
 
 // ─── Monitor Dashboard ────────────────────────────────────────
 app.get('/monitor', (req, res) => {
@@ -164,11 +141,14 @@ app.get('/monitor', (req, res) => {
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
 
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { success: false, message: 'Quá nhiều request.' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { success: false, message: 'Quá nhiều lần thử.' } });
-app.use('/api/', apiLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+// ─── Enterprise Anti-DDoS Protection (NIDS Connected) ─────────
+const antiDDoS = require('./middleware/antiDDoS');
+antiDDoS.applyTo(app);
+
+app.use('/api/auth/login',    antiDDoS.authLimiter);
+app.use('/api/auth/register', antiDDoS.authLimiter);
+app.use('/api/',              antiDDoS.apiLimiter);
+
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
