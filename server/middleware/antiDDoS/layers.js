@@ -20,53 +20,30 @@ function getRealIp(req) {
 }
 
 // ─── Lớp 5: Bot & Anomaly Detection (AI SENSOR UPGRADED - VERSION 4) ──
+// ─── Lớp 5: Bot & Anomaly Detection (AGGRESSIVE MODE - FOR DEMO) ──
 function botDetectionMiddleware(req, res, next) {
-  // Bỏ qua các file tĩnh để tránh làm nhiễu AI và RPM
-  const path = req.path.toLowerCase();
-  if (path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|otf)$/)) {
-    return next();
-  }
-
   const ip = getRealIp(req);
   const rpm = store.recordHit(ip, 60000);
   const cfg = getCfg().botDetection;
 
-  // 1. Phân tích "HumanScore" (Chỉ số người thật)
-  const ua = (req.headers['user-agent'] || '').toLowerCase();
-  let humanScore = 0;
-  
-  if (req.headers['sec-ch-ua']) humanScore += 2;
-  if (req.headers['accept-language']) humanScore += 1;
-  if (req.headers['sec-fetch-mode']) humanScore += 1;
-  if (req.headers['referer']) humanScore += 1;
-
-  if (ua.includes('k6') || ua.includes('python') || ua.includes('curl') || ua.includes('go-http') || ua.includes('postman')) {
-    humanScore -= 5;
-  }
-
-  const isLikelyTool = humanScore < 1;
-  const headerSize = JSON.stringify(req.headers).length;
-  const totalRealBytes = headerSize + (req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0);
-
-  const flowPacketsPerSec = rpm / 60; 
-  const flowBytesPerSec = (totalRealBytes * rpm) / 60;
-
-  // Nếu là Tool hoặc Vượt ngưỡng RPM thì báo cáo ngay
-  if (isLikelyTool || rpm > cfg.anomalyRpmThreshold) {
-    logger.warn('anomaly_detected', { ip, rpm, humanScore, isLikelyTool });
+  // Bản này KHÔNG lọc file tĩnh và KHÔNG phân biệt người dùng
+  // Mục tiêu: Báo DDoS ngay khi nhấn F5 nhanh
+  if (rpm > cfg.anomalyRpmThreshold) {
+    logger.warn('aggressive_anomaly_detected', { ip, rpm });
     
-    sendAlertToNIDS(ip, req.path, isLikelyTool ? `Tool Detection (${ua})` : `High RPM Alert (${rpm} RPM)`, {
-        srcBytes:     totalRealBytes,
-        fwdPackets:   isLikelyTool ? (rpm > 100 ? 50 : 10) : 2, 
-        duration:     isLikelyTool ? 2.0 : 1.0, 
-        pktLenMean:   isLikelyTool ? 100 : 800, 
-        packetsPerSec: flowPacketsPerSec,
-        flowBytesSec: flowBytesPerSec,
-        winBytes:     isLikelyTool ? 256 : 29200
+    // Gửi thông số ép AI phải ra nhãn DDoS (Đỏ)
+    sendAlertToNIDS(ip, req.path, `High Intensity Traffic (${rpm} RPM)`, {
+        srcBytes:     rpm * 100, // Ép dung lượng tăng cực mạnh theo RPM
+        fwdPackets:   Math.floor(rpm / 2), // Ép số gói tin tăng cao
+        duration:     5.0, 
+        pktLenMean:   400, 
+        winBytes:     8192, // Window size tiêu chuẩn nhưng kết hợp RPM cao sẽ ra DDoS
+        synCount:     rpm > 50 ? 1 : 0
     });
   }
   next();
 }
+
 
 // ─── TRAFFIC SAMPLER (Gửi mẫu traffic về NIDS - Tăng độ nhạy) ──────
 function trafficSamplerMiddleware(req, res, next) {
