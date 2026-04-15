@@ -4,7 +4,6 @@ const axios = require('axios');
 const NIDS_API_URL = process.env.NIDS_WEBHOOK_URL || 'http://localhost:5000/api/logs';
 
 async function sendAlertToNIDS(ip, path, description, requestData = {}) {
-  // Nếu chưa cấu hình URL thực tế và đang chạy trên server production thì bỏ qua
   if (!process.env.NIDS_WEBHOOK_URL && process.env.NODE_ENV === 'production') {
     return;
   }
@@ -12,17 +11,21 @@ async function sendAlertToNIDS(ip, path, description, requestData = {}) {
     const payload = {
       ip: ip,
       path: path,
-      status: 'ATTACK_DETECTED',
-      protocol: 'tcp',
-      service: 'http',
-      duration: requestData.duration || 1.0,
-      src_bytes: requestData.srcBytes || 800,
-      dst_bytes: requestData.dstBytes || 1200,
-      description: description
+      description: description,
+      status: requestData.status || 'NORMAL', // Default to normal, let AI decide
+      
+      // ML Features mapping
+      port:       requestData.port       || 80,
+      duration:   requestData.duration   || 1.0,
+      src_bytes:  requestData.srcBytes   || 800,
+      bwd_packets: requestData.bwdPackets || 1,
+      fwd_packets: requestData.fwdPackets || 2,
+      pkt_len_mean: requestData.pktLenMean || 500,
+      syn_count:   requestData.synCount   || 0,
+      win_bytes:   requestData.winBytes   || 8192
     };
     await axios.post(NIDS_API_URL, payload, { timeout: 3000 });
   } catch (error) {
-    // Ignore errors so website won't stall if NIDS is offline
     console.log('[NIDS Webhook Failed]', error.message);
   }
 }

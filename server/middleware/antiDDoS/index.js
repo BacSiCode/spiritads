@@ -19,6 +19,7 @@ const {
   connectionProtectionMiddleware,
   slowRequestMiddleware,
   botDetectionMiddleware,
+  trafficSamplerMiddleware,
 } = require('./layers');
 
 const noop    = (_req, _res, next) => next();
@@ -63,6 +64,9 @@ function applyTo(app) {
   if (cfg.connectionProtection?.enabled) app.use(connectionProtectionMiddleware);
   if (cfg.botDetection?.enabled)         app.use(botDetectionMiddleware);
   if (cfg.rateLimit?.enabled)            app.use(getLimiters().global);
+  
+  // Gửi mẫu traffic sạch về NIDS để Dashboard có màu xanh
+  app.use(trafficSamplerMiddleware);
 }
 
 // ── Per-route limiters ────────────────────────────────────────
