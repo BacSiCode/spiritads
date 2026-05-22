@@ -18,9 +18,28 @@ connectDB();
 const app = express();
 app.set('trust proxy', true);
 
-// ─── Traffic Monitor ──────────────────────────────────────────
-// (Đã chuyển sang bộ lọc Anti-DDoS nâng cao có kết nối NIDS)
+// ─── Lightweight Traffic Tracker ─────────────────────────────
+const trafficLog = {
+  startTime: new Date(),
+  totalRequests: 0,
+  ipTracker: {},        // ip -> count
+  requestsPerMinute: {}, // "YYYY-MM-DDTHH:MM" -> count
+  recentRequests: [],   // [{time, ip, method, path}]
+};
 
+app.use((req, res, next) => {
+  trafficLog.totalRequests++;
+  const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || req.ip;
+  trafficLog.ipTracker[ip] = (trafficLog.ipTracker[ip] || 0) + 1;
+  const minuteKey = new Date().toISOString().slice(0, 16);
+  trafficLog.requestsPerMinute[minuteKey] = (trafficLog.requestsPerMinute[minuteKey] || 0) + 1;
+  trafficLog.recentRequests.push({ time: Date.now(), ip, method: req.method, path: req.path });
+  if (trafficLog.recentRequests.length > 200) trafficLog.recentRequests.shift();
+  // Giữ tối đa 60 phút dữ liệu
+  const keys = Object.keys(trafficLog.requestsPerMinute);
+  if (keys.length > 60) delete trafficLog.requestsPerMinute[keys[0]];
+  next();
+});
 
 // ─── Monitor Dashboard ────────────────────────────────────────
 app.get('/monitor', (req, res) => {
